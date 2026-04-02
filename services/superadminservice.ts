@@ -65,6 +65,17 @@ export const superadminService = {
   },
 
   /**
+   * Get all users (Alias for getRestaurants to support Subscription page)
+   */
+  getUsers: async () => {
+    const response = await api.get('/superadmin/restaurants');
+    return {
+      success: response.data.success,
+      users: response.data.restaurants
+    };
+  },
+
+  /**
    * Get Platform-wide Orders Overview (Aggregate stats)
    */
   getOrdersOverview: async () => {

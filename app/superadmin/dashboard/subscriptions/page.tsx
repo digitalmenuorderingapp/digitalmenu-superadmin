@@ -21,7 +21,7 @@ export default function SubscriptionsPage() {
    useEffect(() => {
       const fetchUsers = async () => {
          try {
-            const response = await superadminService.getUsers();
+            const response = await superadminService.getRestaurants();
             setUsers(response.users);
          } catch (error) {
             console.error('Error fetching users:', error);
