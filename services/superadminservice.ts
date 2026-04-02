@@ -1,6 +1,25 @@
 import api from './api';
 
-export const superadminService = {
+export interface SuperadminService {
+  requestOTP: (email: string) => Promise<any>;
+  verifyOTP: (email: string, otp: string) => Promise<any>;
+  logout: () => Promise<any>;
+  refresh: () => Promise<any>;
+  getSystemStats: () => Promise<any>;
+  getServiceStatus: () => Promise<any>;
+  getAnalytics: () => Promise<any>;
+  getRestaurants: () => Promise<any>;
+  getUsers: () => Promise<any>;
+  getOrdersOverview: () => Promise<any>;
+  getRestaurantDetail: (id: string) => Promise<any>;
+  me: () => Promise<any>;
+  updateRestaurantStatus: (restaurantId: string, status: 'active' | 'inactive') => Promise<any>;
+  updateSubscription: (restaurantId: string, data: any) => Promise<any>;
+  getAuditLogs: (params?: any) => Promise<any>;
+  getCloudinaryStats: () => Promise<any>;
+}
+
+export const superadminService: SuperadminService = {
   /**
    * Request OTP for superadmin login
    */

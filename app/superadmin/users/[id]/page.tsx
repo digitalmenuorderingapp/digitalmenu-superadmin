@@ -43,7 +43,7 @@ export default function UserDetailPage() {
 
    const fetchUserDetail = async () => {
       try {
-         const response = await superadminService.getUserDetail(id as string);
+         const response = await superadminService.getRestaurantDetail(id as string);
          setData(response);
       } catch (error) {
          toast.error('Failed to fetch user details');
