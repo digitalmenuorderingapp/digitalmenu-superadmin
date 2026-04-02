@@ -103,7 +103,7 @@ export default function OrdersPage() {
                   <div className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[idx % COLORS.length] }} />
                   <span className="text-slate-400 capitalize">{item.name}</span>
                 </div>
-                <span className="text-white font-bold">{item.value}</span>
+                <span className="text-white font-bold">{item.value as React.ReactNode}</span>
               </div>
             ))}
           </div>
