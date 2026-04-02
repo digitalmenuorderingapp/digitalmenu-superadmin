@@ -79,7 +79,7 @@ export default function SystemPage() {
             Load balancing
             <span className="text-slate-500">Live Trend</span>
           </h3>
-          <div className="h-[350px]">
+          <div className="h-[350px] w-full relative">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={metrics?.history || []}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#ffffff05" vertical={false} />

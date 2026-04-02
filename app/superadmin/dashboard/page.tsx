@@ -173,14 +173,14 @@ export default function SuperadminOverview() {
                      <h3 className="text-xl font-bold text-white tracking-tight italic uppercase">Platform Throughput</h3>
                      <p className="text-slate-500 text-sm">Aggregated requests per hour across all tenants</p>
                   </div>
-                  <div className="h-[300px] w-full">
+                  <div className="h-[300px] w-full relative">
                      {!metrics ? (
                         <div className="w-full h-full flex flex-col items-center justify-center space-y-4">
                            <Loader2 className="w-8 h-8 text-indigo-500 animate-spin opacity-20" />
                            <Skeleton width="100%" height="80%" className="opacity-10" />
                         </div>
                      ) : (
-                        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                        <ResponsiveContainer width="100%" height="100%">
                            <AreaChart data={metrics?.throughputData || []}>
                               <defs>
                                  <linearGradient id="colorVal" x1="0" y1="0" x2="0" y2="1">

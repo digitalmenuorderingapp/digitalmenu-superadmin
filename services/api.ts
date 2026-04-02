@@ -1,6 +1,6 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '/api';
+const API_BASE_URL = 'https://digitalmenu-server.onrender.com/api';
 
 // Create axios instance
 const api = axios.create({
@@ -48,9 +48,9 @@ api.interceptors.response.use(
 
     // Skip refresh for auth endpoints (login, register, refresh itself)
     const authSkipRefresh = [
-      '/auth/login', 
-      '/auth/register', 
-      '/auth/refresh', 
+      '/auth/login',
+      '/auth/register',
+      '/auth/refresh',
       '/auth/logout',
       '/superadmin/send-otp',
       '/superadmin/verify-otp',
@@ -58,7 +58,7 @@ api.interceptors.response.use(
       '/superadmin/logout'
     ];
     const shouldSkipRefresh = authSkipRefresh.some(endpoint => originalRequest.url?.includes(endpoint));
-    
+
     if (shouldSkipRefresh) {
       return Promise.reject(error);
     }
@@ -84,7 +84,7 @@ api.interceptors.response.use(
     try {
       // Determine if this is a superadmin request or regular user
       const isSuperadminRequest = originalRequest.url?.includes('/superadmin');
-      
+
       if (isSuperadminRequest) {
         // Superadmin uses POST for refresh
         await axios.post(`${API_BASE_URL}/superadmin/refresh`, {}, { withCredentials: true });
@@ -101,7 +101,7 @@ api.interceptors.response.use(
     } catch (refreshError) {
       isRefreshing = false;
       refreshSubscribers = [];
-      
+
       // Don't auto-redirect - let components handle auth state
       // Public pages should work without authentication
       return Promise.reject(refreshError);

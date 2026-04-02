@@ -89,7 +89,7 @@ export default function AnalyticsPage() {
             Order Velocity
             <span className="text-emerald-400">7-Day Trend</span>
           </h3>
-          <div className="h-[300px]">
+          <div className="h-[300px] w-full relative">
             {loading ? (
               <div className="w-full h-full flex flex-col items-center justify-center space-y-4">
                 <Spinner className="w-8 h-8 text-indigo-500 animate-spin opacity-20" />
@@ -123,7 +123,7 @@ export default function AnalyticsPage() {
             Tenant Growth
             <span className="text-indigo-400">New Onboarding</span>
           </h3>
-          <div className="h-[300px]">
+          <div className="h-[300px] w-full relative">
             {loading ? (
               <div className="w-full h-full flex flex-col items-center justify-center space-y-4">
                 <Spinner className="w-8 h-8 text-indigo-500 animate-spin opacity-20" />
