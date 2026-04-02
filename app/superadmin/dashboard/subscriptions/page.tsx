@@ -32,11 +32,11 @@ export default function SubscriptionsPage() {
       fetchUsers();
    }, []);
 
-   const totalActive = users.filter(u => u.subscription?.status === 'active').length;
-   const trialUsers = users.filter(u => u.subscription?.type === 'free').length;
-   const proUsers = users.filter(u => u.subscription?.type === 'paid').length;
+   const totalActive = users?.filter(u => u.subscription?.status === 'active').length || 0;
+   const trialUsers = users?.filter(u => u.subscription?.type === 'free').length || 0;
+   const proUsers = users?.filter(u => u.subscription?.type === 'paid').length || 0;
 
-   const expiringUsers = users.filter(u => {
+   const expiringUsers = users?.filter(u => {
       if (u.subscription?.type === 'free' || !u.subscription?.expiryDate) return false;
       const expiry = new Date(u.subscription.expiryDate);
       const today = new Date();
@@ -103,7 +103,7 @@ export default function SubscriptionsPage() {
                      {loading ? (
                         Array(3).fill(0).map((_, i) => <TableRowSkeleton key={i} columns={5} />)
                      ) : (
-                        users.map((user) => (
+                        users?.map((user) => (
                            <tr key={user._id} className="group hover:bg-white/5 transition-colors">
                               <td className="py-4 px-4">
                                  <div className="flex items-center gap-3">
