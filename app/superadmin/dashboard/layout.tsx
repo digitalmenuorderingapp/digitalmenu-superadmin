@@ -20,10 +20,12 @@ import {
   History,
   Info,
   Server,
-  Globe
+  Globe,
+  Cloud
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { SuperadminAuthProvider, useSuperadminAuth } from '@/context/SuperadminAuthContext';
+import { superadminSocketService } from '@/services/superadmin-socket';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface SuperadminLayoutProps {
@@ -32,6 +34,7 @@ interface SuperadminLayoutProps {
 
 export default function SuperadminLayout({ children }: SuperadminLayoutProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [serviceStatus, setServiceStatus] = useState<any>(null);
   const { superadmin, isLoading, isAuthenticated, logout } = useSuperadminAuth();
   const router = useRouter();
   const pathname = usePathname();
@@ -41,6 +44,25 @@ export default function SuperadminLayout({ children }: SuperadminLayoutProps) {
       router.push('/superadmin/login');
     }
   }, [isLoading, isAuthenticated, pathname, router]);
+
+  // Real-time service status monitoring
+  useEffect(() => {
+    if (isAuthenticated) {
+      superadminSocketService.connect();
+      
+      const handleStatusUpdate = (status: any) => {
+        console.log('[Superadmin] Service status update:', status);
+        setServiceStatus(status);
+      };
+
+      superadminSocketService.on('serviceStatusUpdate', handleStatusUpdate);
+
+      return () => {
+        superadminSocketService.off('serviceStatusUpdate');
+        superadminSocketService.disconnect();
+      };
+    }
+  }, [isAuthenticated]);
 
   const menuSections = [
     {
@@ -53,7 +75,7 @@ export default function SuperadminLayout({ children }: SuperadminLayoutProps) {
     {
       section: 'Platform Management',
       items: [
-        { name: 'Restaurants', icon: <Users size={18} />, href: '/superadmin/dashboard/users' },
+        { name: 'Restaurants', icon: <Users size={18} />, href: '/superadmin/dashboard/restaurants' },
         { name: 'Orders Overview', icon: <ShoppingBag size={18} />, href: '/superadmin/dashboard/orders' },
         { name: 'Subscriptions', icon: <CreditCard size={18} />, href: '/superadmin/dashboard/subscriptions' },
       ]
@@ -109,7 +131,7 @@ export default function SuperadminLayout({ children }: SuperadminLayoutProps) {
       <div className="flex">
         {/* Sidebar */}
         <aside className={`
-          fixed inset-y-0 left-0 z-50 w-64 bg-slate-900/50 backdrop-blur-xl border-r border-slate-800 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:block
+          fixed inset-y-0 left-0 z-50 w-64 h-screen bg-slate-900/50 backdrop-blur-xl border-r border-slate-800 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:block
           ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
         `}>
           <div className="flex flex-col h-full p-6">
@@ -168,19 +190,6 @@ export default function SuperadminLayout({ children }: SuperadminLayoutProps) {
             </nav>
 
             <div className="mt-auto pt-6 border-t border-slate-800">
-              {/* Server Status Badge */}
-              <div className="px-4 py-3 bg-slate-800/30 rounded-2xl mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-xl bg-emerald-500/10 flex items-center justify-center">
-                    <Server size={16} className="text-emerald-400" />
-                  </div>
-                  <div className="flex flex-col min-w-0">
-                    <span className="text-xs font-medium text-slate-300">System Online</span>
-                    <span className="text-[10px] text-slate-500 truncate">All services operational</span>
-                  </div>
-                </div>
-              </div>
-
               <div className="px-4 py-3 bg-slate-800/30 rounded-2xl mb-4">
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center text-xs font-bold text-white">

@@ -29,11 +29,11 @@ import { Skeleton, TableRowSkeleton } from '@/components/ui/Skeleton';
 import { toast } from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 
-export default function UserMonitoring() {
-  const [users, setUsers] = useState<any[]>([]);
+export default function RestaurantMonitoring() {
+  const [restaurants, setRestaurants] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [selectedUser, setSelectedUser] = useState<any>(null);
+  const [selectedRestaurant, setSelectedRestaurant] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [updating, setUpdating] = useState(false);
 
@@ -44,38 +44,38 @@ export default function UserMonitoring() {
     expiryDate: ''
   });
 
-  const fetchUsers = async () => {
+  const fetchRestaurants = async () => {
     try {
-      const data = await superadminService.getUsers();
-      setUsers(data.users);
+      const data = await superadminService.getRestaurants();
+      setRestaurants(data.restaurants);
     } catch (error) {
-      toast.error('Failed to load user database');
+      toast.error('Failed to load restaurant database');
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchUsers();
+    fetchRestaurants();
   }, []);
 
-  const handleToggleStatus = async (userId: string, currentStatus: string) => {
+  const handleToggleStatus = async (restaurantId: string, currentStatus: string) => {
     try {
       setUpdating(true);
       const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
-      await superadminService.updateUserStatus(userId, newStatus);
-      toast.success(`User ${newStatus === 'active' ? 'activated' : 'deactivated'} successfully`);
-      fetchUsers();
+      await superadminService.updateRestaurantStatus(restaurantId, newStatus);
+      toast.success(`Restaurant ${newStatus === 'active' ? 'activated' : 'deactivated'} successfully`);
+      fetchRestaurants();
     } catch (error) {
-      toast.error('Failed to update user status');
+      toast.error('Failed to update restaurant status');
     } finally {
       setUpdating(false);
     }
   };
 
-  const openSubscriptionModal = (user: any) => {
-    setSelectedUser(user);
-    const sub = user.subscription || { type: 'free', status: 'active', expiryDate: null };
+  const openSubscriptionModal = (restaurant: any) => {
+    setSelectedRestaurant(restaurant);
+    const sub = restaurant.subscription || { type: 'free', status: 'active', expiryDate: null };
     setSubscriptionData({
       type: sub.type,
       status: sub.status,
@@ -85,10 +85,10 @@ export default function UserMonitoring() {
   };
 
   const handleUpdateSubscription = async () => {
-    if (!selectedUser) return;
+    if (!selectedRestaurant) return;
     try {
       setUpdating(true);
-      await superadminService.updateSubscription(selectedUser._id, {
+      await superadminService.updateSubscription(selectedRestaurant._id, {
         subscription: {
           type: subscriptionData.type,
           status: subscriptionData.status,
@@ -97,7 +97,7 @@ export default function UserMonitoring() {
       });
       toast.success('Subscription updated successfully');
       setIsModalOpen(false);
-      fetchUsers();
+      fetchRestaurants();
     } catch (error) {
       toast.error('Failed to update subscription');
     } finally {
@@ -105,10 +105,10 @@ export default function UserMonitoring() {
     }
   };
 
-  const filteredUsers = users.filter(user =>
-    user.restaurantName?.toLowerCase().includes(search.toLowerCase()) ||
-    user.email?.toLowerCase().includes(search.toLowerCase()) ||
-    user.ownerName?.toLowerCase().includes(search.toLowerCase())
+  const filteredRestaurants = restaurants.filter(restaurant =>
+    restaurant.restaurantName?.toLowerCase().includes(search.toLowerCase()) ||
+    restaurant.email?.toLowerCase().includes(search.toLowerCase()) ||
+    restaurant.ownerName?.toLowerCase().includes(search.toLowerCase())
   );
 
   // Remove full-page blocking loader
@@ -117,7 +117,7 @@ export default function UserMonitoring() {
     <div className="space-y-8 animate-in fade-in duration-700">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="flex flex-col gap-1">
-          <h1 className="text-3xl font-bold text-white tracking-tight">User Database</h1>
+          <h1 className="text-3xl font-bold text-white tracking-tight">Restaurant Database</h1>
           <p className="text-slate-400">Manage restaurant accounts, access status, and subscriptions</p>
         </div>
 
@@ -138,7 +138,7 @@ export default function UserMonitoring() {
         </div>
       </div>
 
-      {users.length === 0 ? (
+      {restaurants.length === 0 ? (
         <div className="bg-slate-900/30 border border-dashed border-slate-800 rounded-3xl p-16 text-center">
           <div className="w-20 h-20 bg-slate-800/50 rounded-full flex items-center justify-center mx-auto mb-6">
             <AlertCircle size={40} className="text-slate-600" />
@@ -164,9 +164,9 @@ export default function UserMonitoring() {
                 {loading ? (
                   Array(5).fill(0).map((_, i) => <TableRowSkeleton key={i} columns={6} />)
                 ) : (
-                  filteredUsers.map((user, index) => (
+                  filteredRestaurants.map((restaurant, index) => (
                     <motion.tr
-                      key={user._id}
+                      key={restaurant._id}
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: index * 0.05 }}
@@ -174,37 +174,41 @@ export default function UserMonitoring() {
                     >
                       <td className="px-8 py-6">
                         <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 flex items-center justify-center border border-white/5 group-hover:border-indigo-500/50 transition-all shadow-xl">
-                            <span className="text-lg font-black text-white italic">{user.restaurantName?.[0] || 'R'}</span>
+                          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 flex items-center justify-center border border-white/5 group-hover:border-indigo-500/50 transition-all shadow-xl overflow-hidden">
+                            {restaurant.logo ? (
+                              <img src={restaurant.logo} alt={restaurant.restaurantName} className="w-full h-full object-cover" />
+                            ) : (
+                              <span className="text-lg font-black text-white italic">{restaurant.restaurantName?.[0] || 'R'}</span>
+                            )}
                           </div>
                           <div className="flex flex-col">
-                            <span className="font-bold text-white text-sm tracking-tight mb-0.5">{user.restaurantName || 'Unnamed'}</span>
+                            <span className="font-bold text-white text-sm tracking-tight mb-0.5">{restaurant.restaurantName || 'Unnamed'}</span>
                             <span className="text-[10px] text-slate-500 flex items-center gap-1.5 font-medium">
-                              <Mail size={10} /> {user.email}
+                              <Mail size={10} /> {restaurant.email}
                             </span>
                           </div>
                         </div>
                       </td>
 
                       <td className="px-6 py-6 font-bold text-slate-300 text-xs italic uppercase italic tracking-widest">
-                        {user.ownerName || '---'}
+                        {restaurant.ownerName || '---'}
                       </td>
 
                       <td className="px-6 py-6">
                         <div className="flex flex-col gap-1">
-                          <span className={`text-[10px] font-black uppercase tracking-widest ${user.subscription?.type === 'free' ? 'text-amber-400' : 'text-indigo-400'}`}>
-                            {user.subscription?.type === 'free' ? 'Trial Access' : 'Business Pro'}
+                          <span className={`text-[10px] font-black uppercase tracking-widest ${restaurant.subscription?.type === 'free' ? 'text-amber-400' : 'text-indigo-400'}`}>
+                            {restaurant.subscription?.type === 'free' ? 'Trial Access' : 'Business Pro'}
                           </span>
                           <div className="text-[9px] text-slate-500 flex items-center gap-1 font-black">
                             <Clock size={10} />
-                            {user.subscription?.expiryDate ? new Date(user.subscription.expiryDate).toLocaleDateString() : 'Lifetime'}
+                            {restaurant.subscription?.expiryDate ? new Date(restaurant.subscription.expiryDate).toLocaleDateString() : 'Lifetime'}
                           </div>
                         </div>
                       </td>
 
                       <td className="px-6 py-6">
-                        <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${user.subscription?.status === 'active' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}>
-                          {user.subscription?.status || 'inactive'}
+                        <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${restaurant.subscription?.status === 'active' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}>
+                          {restaurant.subscription?.status || 'inactive'}
                         </span>
                       </td>
 
@@ -212,30 +216,30 @@ export default function UserMonitoring() {
                         <div className="flex flex-col gap-1">
                           <div className="flex items-center gap-2">
                             <div className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
-                            <span className="text-white font-bold text-[10px]">{user.requestCount || 0} REQ</span>
+                            <span className="text-white font-bold text-[10px]">{restaurant.requestCount || 0} REQ</span>
                           </div>
                           <span className="text-slate-500 text-[10px] font-medium tracking-tight">
-                            {user.lastActivity ? `${Math.floor((Date.now() - new Date(user.lastActivity).getTime()) / (1000 * 60 * 60))} hrs ago` : 'Never'}
+                            {restaurant.lastActivity ? `${Math.floor((Date.now() - new Date(restaurant.lastActivity).getTime()) / (1000 * 60 * 60))} hrs ago` : 'Never'}
                           </span>
                         </div>
                       </td>
 
                       <td className="px-8 py-6 text-right">
                         <div className="flex items-center justify-end gap-2 translate-x-4 opacity-0 group-hover:opacity-100 group-hover:translate-x-0 transition-all">
-                          <Link href={`/superadmin/dashboard/users/${user._id}`}>
+                          <Link href={`/superadmin/dashboard/restaurants/${restaurant._id}`}>
                             <button className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-xl border border-white/5 transition-all" title="View Details">
                               <Eye size={16} />
                             </button>
                           </Link>
                           <button
-                            onClick={() => handleToggleStatus(user._id, user.subscription?.status || 'inactive')}
-                            className={`p-2 rounded-xl transition-all ${user.subscription?.status === 'active' ? 'bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 border border-rose-500/20' : 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/20'}`}
-                            title={user.subscription?.status === 'active' ? 'Deactivate Account' : 'Activate Account'}
+                            onClick={() => handleToggleStatus(restaurant._id, restaurant.subscription?.status || 'inactive')}
+                            className={`p-2 rounded-xl transition-all ${restaurant.subscription?.status === 'active' ? 'bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 border border-rose-500/20' : 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/20'}`}
+                            title={restaurant.subscription?.status === 'active' ? 'Deactivate Account' : 'Activate Account'}
                           >
-                            {user.subscription?.status === 'active' ? <XCircle size={16} /> : <CheckCircle2 size={16} />}
+                            {restaurant.subscription?.status === 'active' ? <XCircle size={16} /> : <CheckCircle2 size={16} />}
                           </button>
                           <button
-                            onClick={() => openSubscriptionModal(user)}
+                            onClick={() => openSubscriptionModal(restaurant)}
                             className="p-2 bg-slate-800 border border-white/5 text-slate-400 hover:text-white hover:bg-indigo-600 hover:border-indigo-500 rounded-xl transition-all"
                             title="Manage Subscription"
                           >
@@ -249,9 +253,9 @@ export default function UserMonitoring() {
             </table>
           </div>
 
-          {filteredUsers.length > 1 && (
+          {filteredRestaurants.length > 1 && (
             <div className="bg-white/5 px-8 py-5 flex items-center justify-between border-t border-white/5">
-              <span className="text-[10px] text-slate-500 font-black uppercase tracking-widest">Total {filteredUsers.length} Partners</span>
+              <span className="text-[10px] text-slate-500 font-black uppercase tracking-widest">Total {filteredRestaurants.length} Partners</span>
               <div className="flex items-center gap-3">
                 <button disabled className="px-4 py-2 bg-white/5 text-slate-600 rounded-xl text-[10px] font-black uppercase tracking-widest border border-white/5 cursor-not-allowed">Prev</button>
                 <button className="px-4 py-2 bg-white/10 text-slate-300 hover:text-white hover:bg-indigo-600 rounded-xl text-[10px] font-black uppercase tracking-widest border border-white/5 transition-all shadow-xl">Next</button>
@@ -289,7 +293,7 @@ export default function UserMonitoring() {
                   <Edit3 size={28} />
                 </div>
                 <h2 className="text-2xl font-bold text-white tracking-tight">Manage Subscription</h2>
-                <p className="text-slate-400">Updating settings for <span className="text-indigo-400 font-bold">{selectedUser?.restaurantName}</span></p>
+                <p className="text-slate-400">Updating settings for <span className="text-indigo-400 font-bold">{selectedRestaurant?.restaurantName}</span></p>
               </div>
 
               <div className="space-y-8">

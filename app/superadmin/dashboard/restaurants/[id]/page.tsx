@@ -40,10 +40,10 @@ export default function RestaurantDetailsPage() {
    const fetchDetail = async () => {
       try {
          setLoading(true);
-         const response = await superadminService.getUserDetail(id as string);
+         const response = await superadminService.getRestaurantDetail(id as string);
          setData(response);
-         // Initialize subscription data from user
-         const sub = response.user?.subscription || { type: 'free', status: 'active', expiryDate: null };
+         // Initialize subscription data from restaurant
+         const sub = response.restaurant?.subscription || { type: 'free', status: 'active', expiryDate: null };
          setSubscriptionData({
             type: sub.type,
             status: sub.status,
@@ -51,7 +51,7 @@ export default function RestaurantDetailsPage() {
          });
       } catch (error) {
          toast.error('Failed to load restaurant insights');
-         router.push('/superadmin/dashboard/users');
+         router.push('/superadmin/dashboard/restaurants');
       } finally {
          setLoading(false);
       }
@@ -62,18 +62,18 @@ export default function RestaurantDetailsPage() {
    }, [id]);
 
    // Remove full-page blocking loader
-   const user = data?.user || {};
+   const restaurant = data?.restaurant || {};
    const stats = data?.stats || {};
 
    const handleToggleStatus = async () => {
       try {
          setUpdating(true);
-         const newStatus = user.subscription?.status === 'active' ? 'inactive' : 'active';
-         await superadminService.updateUserStatus(user._id, newStatus);
-         toast.success(`User ${newStatus === 'active' ? 'activated' : 'deactivated'} successfully`);
+         const newStatus = restaurant.subscription?.status === 'active' ? 'inactive' : 'active';
+         await superadminService.updateRestaurantStatus(restaurant._id, newStatus);
+         toast.success(`Restaurant ${newStatus === 'active' ? 'activated' : 'deactivated'} successfully`);
          fetchDetail();
       } catch (error) {
-         toast.error('Failed to update user status');
+         toast.error('Failed to update restaurant status');
       } finally {
          setUpdating(false);
       }
@@ -82,7 +82,7 @@ export default function RestaurantDetailsPage() {
    const handleUpdateSubscription = async () => {
       try {
          setUpdating(true);
-         await superadminService.updateSubscription(user._id, {
+         await superadminService.updateSubscription(restaurant._id, {
             subscription: {
                type: subscriptionData.type,
                status: subscriptionData.status,
@@ -114,7 +114,7 @@ export default function RestaurantDetailsPage() {
                   <Skeleton width={80} height={80} className="rounded-[2rem]" />
                ) : (
                   <div className="w-20 h-20 rounded-[2rem] bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center text-3xl font-black text-white italic shadow-2xl shadow-indigo-500/20">
-                     {user.restaurantName?.[0] || 'R'}
+                     {restaurant.restaurantName?.[0] || 'R'}
                   </div>
                )}
                <div className="space-y-2">
@@ -125,10 +125,10 @@ export default function RestaurantDetailsPage() {
                      </>
                   ) : (
                      <>
-                        <h1 className="text-4xl font-black text-white tracking-tighter uppercase italic">{user.restaurantName || 'Unnamed'}</h1>
+                        <h1 className="text-4xl font-black text-white tracking-tighter uppercase italic">{restaurant.restaurantName || 'Unnamed'}</h1>
                         <p className="text-slate-500 font-medium tracking-wide flex items-center gap-2">
-                           <span className={`w-2 h-2 rounded-full ${user.subscription?.status === 'active' ? 'bg-emerald-500' : 'bg-rose-500'}`} />
-                           {user.subscription?.status === 'active' ? 'Active Platform Node' : `Operational Node ${user.subscription?.status || 'inactive'}`}
+                           <span className={`w-2 h-2 rounded-full ${restaurant.subscription?.status === 'active' ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                           {restaurant.subscription?.status === 'active' ? 'Active Platform Node' : `Operational Node ${restaurant.subscription?.status || 'inactive'}`}
                         </p>
                      </>
                   )}
@@ -139,8 +139,8 @@ export default function RestaurantDetailsPage() {
                <button
                   onClick={handleToggleStatus}
                   disabled={updating}
-                  className={`px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${user.subscription?.status === 'active' ? 'bg-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white' : 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500 hover:text-white border border-emerald-500/20'}`}>
-                  {updating ? 'Updating...' : (user.subscription?.status === 'active' ? 'Revoke Access' : 'Restore Access')}
+                  className={`px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${restaurant.subscription?.status === 'active' ? 'bg-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white' : 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500 hover:text-white border border-emerald-500/20'}`}>
+                  {updating ? 'Updating...' : (restaurant.subscription?.status === 'active' ? 'Revoke Access' : 'Restore Access')}
                </button>
             </div>
          </div>
@@ -173,10 +173,10 @@ export default function RestaurantDetailsPage() {
                      ))
                   ) : (
                      <>
-                        <DetailItem label="Owner Identity" value={user.ownerName || 'Unknown'} />
-                        <DetailItem label="Primary Endpoint" value={user.email} />
-                        <DetailItem label="Onboarding Date" value={new Date(user.createdAt).toLocaleDateString()} />
-                        <DetailItem label="Last Activity" value={user.lastActivity ? new Date(user.lastActivity).toLocaleString() : 'Never'} />
+                        <DetailItem label="Owner Identity" value={restaurant.ownerName || 'Unknown'} />
+                        <DetailItem label="Primary Endpoint" value={restaurant.email} />
+                        <DetailItem label="Onboarding Date" value={new Date(restaurant.createdAt).toLocaleDateString()} />
+                        <DetailItem label="Last Activity" value={restaurant.lastActivity ? new Date(restaurant.lastActivity).toLocaleString() : 'Never'} />
                      </>
                   )}
                </div>
@@ -197,9 +197,9 @@ export default function RestaurantDetailsPage() {
                      ))
                   ) : (
                      <>
-                        <DetailItem label="Current Plan" value={user.subscription?.type === 'free' ? 'Trial / Lifetime Free' : 'Business Pro'} />
-                        <DetailItem label="Expiry Schedule" value={user.subscription?.expiryDate ? new Date(user.subscription.expiryDate).toLocaleDateString() : 'Continuous'} />
-                        <DetailItem label="Verification" value={user.isVerified ? 'Identity Verified' : 'Pending Verification'} />
+                        <DetailItem label="Current Plan" value={restaurant.subscription?.type === 'free' ? 'Trial / Lifetime Free' : 'Business Pro'} />
+                        <DetailItem label="Expiry Schedule" value={restaurant.subscription?.expiryDate ? new Date(restaurant.subscription.expiryDate).toLocaleDateString() : 'Continuous'} />
+                        <DetailItem label="Verification" value={restaurant.isVerified ? 'Identity Verified' : 'Pending Verification'} />
                      </>
                   )}
                   <div className="pt-4">

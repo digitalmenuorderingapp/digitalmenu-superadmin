@@ -57,10 +57,10 @@ export const superadminService = {
   },
 
   /**
-   * Get all registered users (restaurants) with enriched data
+   * Get all registered restaurants with enriched data
    */
-  getUsers: async () => {
-    const response = await api.get('/superadmin/users');
+  getRestaurants: async () => {
+    const response = await api.get('/superadmin/restaurants');
     return response.data;
   },
 
@@ -73,10 +73,10 @@ export const superadminService = {
   },
 
   /**
-   * Get Detail of a Single User (Restaurant)
+   * Get Detail of a Single Restaurant
    */
-  getUserDetail: async (id: string) => {
-    const response = await api.get(`/superadmin/user/${id}`);
+  getRestaurantDetail: async (id: string) => {
+    const response = await api.get(`/superadmin/restaurant/${id}`);
     return response.data;
   },
 
@@ -89,17 +89,17 @@ export const superadminService = {
   },
 
   /**
-   * Update user account status
+   * Update restaurant account status
    */
-  updateUserStatus: async (userId: string, status: 'active' | 'inactive') => {
-    const response = await api.patch(`/superadmin/users/${userId}/status`, { status });
+  updateRestaurantStatus: async (restaurantId: string, status: 'active' | 'inactive') => {
+    const response = await api.patch(`/superadmin/restaurants/${restaurantId}/status`, { status });
     return response.data;
   },
 
   /**
-   * Update user subscription details
+   * Update restaurant subscription details
    */
-  updateSubscription: async (userId: string, data: { 
+  updateSubscription: async (restaurantId: string, data: { 
     subscription: {
       type: 'free' | 'paid',
       status: 'active' | 'inactive' | 'expired',
@@ -107,7 +107,7 @@ export const superadminService = {
       expiryDate: string | null
     } 
   }) => {
-    const response = await api.patch(`/superadmin/users/${userId}/subscription`, data);
+    const response = await api.patch(`/superadmin/restaurants/${restaurantId}/subscription`, data);
     return response.data;
   },
 
@@ -116,6 +116,14 @@ export const superadminService = {
    */
   getAuditLogs: async (params?: { type?: string, status?: string, search?: string, page?: number, limit?: number }) => {
     const response = await api.get('/superadmin/logs', { params });
+    return response.data;
+  },
+
+  /**
+   * Get Cloudinary usage stats
+   */
+  getCloudinaryStats: async () => {
+    const response = await api.get('/superadmin/cloudinary-stats');
     return response.data;
   }
 };

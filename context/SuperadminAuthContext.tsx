@@ -22,6 +22,12 @@ interface SuperadminAuthContextType {
   isAuthenticated: boolean;
   requestOTP: (email: string) => Promise<void>;
   verifyOTP: (email: string, otp: string) => Promise<any>;
+  verifyOtp: (email: string, otp: string) => Promise<any>; // Alias for compatibility
+  resendOtp: (email: string) => Promise<void>;
+  login: (email: string, password?: string) => Promise<{ notVerified: boolean }>;
+  register: (email: string, password?: string) => Promise<void>;
+  forgotPassword: (email: string) => Promise<void>;
+  resetPassword: (email: string, otp: string, newPassword?: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -111,6 +117,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const resendOtp = async (email: string) => {
+    await requestOTP(email);
+  };
+
+  const login = async (email: string) => {
+    await requestOTP(email);
+    return { notVerified: true };
+  };
+
+  const register = async (email: string) => {
+    toast.error('Registration is not available for Superadmin accounts');
+  };
+
+  const forgotPassword = async (email: string) => {
+    await requestOTP(email);
+  };
+
+  const resetPassword = async (email: string, otp: string) => {
+    toast.error('Password reset is not available. Please login via OTP.');
+  };
+
   return (
     <SuperadminAuthContext.Provider
       value={{
@@ -120,6 +147,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isAuthenticated: !!superadmin,
         requestOTP,
         verifyOTP,
+        verifyOtp: verifyOTP,
+        resendOtp,
+        login,
+        register,
+        forgotPassword,
+        resetPassword,
         logout,
       }}
     >

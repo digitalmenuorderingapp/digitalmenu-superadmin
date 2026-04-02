@@ -24,7 +24,9 @@ import {
    Lock,
    Unlock,
    Eye,
-   History as HistoryIcon
+   History as HistoryIcon,
+   Cloud,
+   Image
 } from 'lucide-react';
 import { Skeleton, CompactStatSkeleton } from '@/components/ui/Skeleton';
 import { toast } from 'react-hot-toast';
@@ -47,22 +49,25 @@ export default function SuperadminOverview() {
    const [services, setServices] = useState<any>(null);
    const [analytics, setAnalytics] = useState<any>(null);
    const [users, setUsers] = useState<any[]>([]);
+   const [cloudinary, setCloudinary] = useState<any>(null);
    const [loading, setLoading] = useState(true);
    const [refreshInterval, setRefreshInterval] = useState(10000); // 10s default
 
    const fetchData = async () => {
       try {
-         const [metricsData, servicesData, analyticsData, usersData] = await Promise.all([
+         const [metricsData, servicesData, analyticsData, usersData, cloudinaryData] = await Promise.all([
             superadminService.getSystemStats(),
             superadminService.getServiceStatus(),
             superadminService.getAnalytics(),
-            superadminService.getUsers()
+            superadminService.getRestaurants(),
+            superadminService.getCloudinaryStats()
          ]);
 
          setMetrics(metricsData.metrics);
          setServices(servicesData.status);
          setAnalytics(analyticsData.analytics);
          setUsers(usersData.users);
+         setCloudinary(cloudinaryData.cloudinary);
       } catch (error) {
          console.error('Refresh error:', error);
       } finally {
@@ -175,7 +180,7 @@ export default function SuperadminOverview() {
                            <Skeleton width="100%" height="80%" className="opacity-10" />
                         </div>
                      ) : (
-                        <ResponsiveContainer width="100%" height="100%">
+                        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                            <AreaChart data={metrics?.throughputData || []}>
                               <defs>
                                  <linearGradient id="colorVal" x1="0" y1="0" x2="0" y2="1">
@@ -239,6 +244,8 @@ export default function SuperadminOverview() {
                   </h3>
 
                   <div className="space-y-4">
+                     <CloudinaryCard cloudinary={cloudinary} />
+
                      <div className="p-4 bg-white/5 rounded-2xl border border-white/5 flex items-center gap-4 group hover:bg-white/10 transition-colors">
                         <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500">
                            <ShieldCheck size={20} />
@@ -276,6 +283,92 @@ export default function SuperadminOverview() {
                </div>
             </div>
          </div>
+      </div>
+   );
+}
+
+function CloudinaryCard({ cloudinary }: { cloudinary: any }) {
+   if (!cloudinary) {
+      return (
+         <div className="p-4 bg-white/5 rounded-2xl border border-white/5 space-y-3">
+            <div className="flex items-center gap-3">
+               <Skeleton width={24} height={24} className="rounded-lg" />
+               <Skeleton width="60%" height={16} />
+            </div>
+            <Skeleton width="100%" height={8} className="rounded-full" />
+            <div className="flex justify-between">
+               <Skeleton width="40%" height={12} />
+               <Skeleton width="30%" height={12} />
+            </div>
+         </div>
+      );
+   }
+
+   const isError = cloudinary.status === 'error';
+   const percentage = cloudinary.storage?.percentage || 0;
+   const used = cloudinary.storage?.usedFormatted || '0 MB';
+   const limit = cloudinary.storage?.limitFormatted || '0 MB';
+   const bandwidth = cloudinary.bandwidth?.formatted || '0 MB';
+   const requests = cloudinary.requests || 0;
+
+   return (
+      <div className={`p-4 rounded-2xl border space-y-3 transition-all ${
+         isError 
+            ? 'bg-rose-500/5 border-rose-500/20' 
+            : 'bg-white/5 border-white/5 hover:bg-white/10'
+      }`}>
+         <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+               <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                  isError ? 'bg-rose-500/10 text-rose-500' : 'bg-sky-500/10 text-sky-400'
+               }`}>
+                  <Cloud size={20} />
+               </div>
+               <div>
+                  <div className="text-white text-xs font-bold">Cloudinary Storage</div>
+                  <div className={`text-[10px] ${isError ? 'text-rose-400' : 'text-slate-500'}`}>
+                     {isError ? 'Connection Error' : cloudinary.plan || 'Free Plan'}
+                  </div>
+               </div>
+            </div>
+            <div className={`w-2 h-2 rounded-full ${isError ? 'bg-rose-500' : 'bg-sky-500 animate-pulse'}`} />
+         </div>
+
+         {!isError && (
+            <>
+               {/* Storage Progress Bar */}
+               <div className="space-y-1.5">
+                  <div className="flex justify-between text-[10px] text-slate-400">
+                     <span>Storage Used</span>
+                     <span>{percentage}%</span>
+                  </div>
+                  <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
+                     <div 
+                        className={`h-full rounded-full transition-all duration-500 ${
+                           percentage > 80 ? 'bg-rose-500' : percentage > 60 ? 'bg-amber-500' : 'bg-sky-500'
+                        }`}
+                        style={{ width: `${Math.min(percentage, 100)}%` }}
+                     />
+                  </div>
+                  <div className="flex justify-between text-[10px] text-slate-500">
+                     <span>{used}</span>
+                     <span>{limit}</span>
+                  </div>
+               </div>
+
+               {/* Stats Grid */}
+               <div className="grid grid-cols-2 gap-2 pt-2 border-t border-white/5">
+                  <div className="flex items-center gap-2">
+                     <Image size={12} className="text-slate-500" />
+                     <span className="text-[10px] text-slate-400">{bandwidth}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                     <Zap size={12} className="text-slate-500" />
+                     <span className="text-[10px] text-slate-400">{requests.toLocaleString()} reqs</span>
+                  </div>
+               </div>
+            </>
+         )}
       </div>
    );
 }
