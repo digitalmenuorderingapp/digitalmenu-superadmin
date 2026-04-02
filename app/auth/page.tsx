@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/SuperadminAuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -12,7 +12,7 @@ import Link from 'next/link';
 
 type AuthMode = 'login' | 'register';
 
-export default function AuthPage() {
+function AuthPageContent() {
     const [mode, setMode] = useState<AuthMode>('login');
     const [showForgot, setShowForgot] = useState(false);
     const [showOtp, setShowOtp] = useState(false);
@@ -547,5 +547,17 @@ export default function AuthPage() {
                 )}
             </AnimatePresence>
         </div>
+    );
+}
+
+export default function AuthPage() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen bg-[#020617] flex items-center justify-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+            </div>
+        }>
+            <AuthPageContent />
+        </Suspense>
     );
 }

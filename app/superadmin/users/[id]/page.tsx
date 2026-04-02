@@ -56,7 +56,7 @@ export default function UserDetailPage() {
    const toggleStatus = async () => {
       try {
          setToggling(true);
-         await superadminService.updateUserStatus(id as string, !data.user.isActive);
+         await superadminService.updateRestaurantStatus(id as string, data.user.isActive ? 'inactive' : 'active');
          toast.success(data.user.isActive ? 'User blocked' : 'User unblocked');
          fetchUserDetail();
       } catch (error) {
@@ -175,7 +175,7 @@ export default function UserDetailPage() {
                   </div>
 
                   <div className="space-y-6">
-                     <ActivityRow label="Activity Status" value={(new Date() - new Date(user.lastActivity)) < (10 * 60 * 1000) ? 'Online Now' : 'Offline'} isGood={(new Date() - new Date(user.lastActivity)) < (10 * 60 * 1000)} />
+                     <ActivityRow label="Activity Status" value={user.lastActivity ? ((Date.now() - new Date(user.lastActivity).getTime()) < (10 * 60 * 1000) ? 'Online Now' : 'Offline') : 'Never'} isGood={user.lastActivity ? ((Date.now() - new Date(user.lastActivity).getTime()) < (10 * 60 * 1000)) : false} />
                      <ActivityRow label="API Requests (Lifetime)" value={user.requestCount || 0} />
                      <ActivityRow label="Last Activity" value={user.lastActivity ? new Date(user.lastActivity).toLocaleString() : 'Never'} />
                      <ActivityRow label="Support Status" value="Healthy" isGood={true} />
