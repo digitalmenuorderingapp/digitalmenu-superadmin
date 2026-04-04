@@ -22,7 +22,8 @@ export default function SubscriptionsPage() {
       const fetchUsers = async () => {
          try {
             const response = await superadminService.getRestaurants();
-            setUsers(response.users);
+            // Set users array from restaurants response
+            setUsers(response.restaurants || []);
          } catch (error) {
             console.error('Error fetching users:', error);
          } finally {
@@ -33,11 +34,11 @@ export default function SubscriptionsPage() {
    }, []);
 
    const totalActive = users?.filter(u => u.subscription?.status === 'active').length || 0;
-   const trialUsers = users?.filter(u => u.subscription?.type === 'free').length || 0;
+   const trialUsers = users?.filter(u => u.subscription?.type === 'trial').length || 0;
    const proUsers = users?.filter(u => u.subscription?.type === 'paid').length || 0;
 
    const expiringUsers = users?.filter(u => {
-      if (u.subscription?.type === 'free' || !u.subscription?.expiryDate) return false;
+      if (!u.subscription?.expiryDate) return false;
       const expiry = new Date(u.subscription.expiryDate);
       const today = new Date();
       const thirtyDaysFromNow = new Date();
@@ -114,8 +115,8 @@ export default function SubscriptionsPage() {
                                  </div>
                               </td>
                               <td className="py-4 px-4">
-                                 <span className={`text-[10px] font-black uppercase tracking-widest ${user.subscription?.type === 'free' ? 'text-amber-400' : 'text-indigo-400'}`}>
-                                    {user.subscription?.type === 'free' ? 'Trial Access' : 'Business Pro'}
+                                 <span className={`text-[10px] font-black uppercase tracking-widest ${user.subscription?.type === 'trial' ? 'text-amber-400' : user.subscription?.type === 'free' ? 'text-indigo-300' : 'text-indigo-400'}`}>
+                                    {user.subscription?.type === 'trial' ? 'Trial Access' : user.subscription?.type === 'free' ? 'Legacy Free' : 'Business Pro'}
                                  </span>
                               </td>
                               <td className="py-4 px-4 text-slate-400 text-xs font-medium">
