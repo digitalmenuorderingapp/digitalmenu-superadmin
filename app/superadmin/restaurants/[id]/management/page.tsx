@@ -468,7 +468,7 @@ export default function RestaurantManagementPage() {
                   fill="#8884d8"
                   paddingAngle={5}
                   dataKey="value"
-                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                  label={({ name, percent }) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}
                 >
                   {analyticsData.orderTypes.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
@@ -504,8 +504,8 @@ export default function RestaurantManagementPage() {
                 <YAxis dataKey="name" type="category" stroke="#64748B" fontSize={11} width={100} />
                 <Tooltip 
                   contentStyle={{ backgroundColor: '#1E293B', border: '1px solid #334155' }}
-                  formatter={(value: number, name: string) => {
-                    if (name === 'revenue') return [`₹${value.toLocaleString()}`, 'Revenue'];
+                  formatter={(value: any, name: any) => {
+                    if (name === 'Revenue') return [`₹${Number(value).toLocaleString()}`, 'Revenue'];
                     return [value, 'Orders'];
                   }}
                 />
