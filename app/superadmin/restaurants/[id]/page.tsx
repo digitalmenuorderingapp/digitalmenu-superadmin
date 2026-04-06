@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { superadminService } from '@/services/superadminservice';
 import {
    ArrowLeft,
@@ -32,7 +33,7 @@ export default function RestaurantDetailsPage() {
    const [isModalOpen, setIsModalOpen] = useState(false);
    const [updating, setUpdating] = useState(false);
    const [subscriptionData, setSubscriptionData] = useState({
-      type: 'free' as 'free' | 'paid',
+      type: 'free' as 'free' | 'paid' | 'trial',
       status: 'active' as 'active' | 'inactive' | 'expired',
       expiryDate: ''
    });
@@ -51,7 +52,7 @@ export default function RestaurantDetailsPage() {
          });
       } catch (error) {
          toast.error('Failed to load restaurant insights');
-         router.push('/superadmin/dashboard/restaurants');
+         router.push('/superadmin/restaurants');
       } finally {
          setLoading(false);
       }
@@ -203,7 +204,11 @@ export default function RestaurantDetailsPage() {
                      ))
                   ) : (
                      <>
-                        <DetailItem label="Current Plan" value={restaurant.subscription?.type === 'free' ? 'Trial / Lifetime Free' : 'Business Pro'} />
+                        <DetailItem label="Current Plan" value={
+                           restaurant.subscription?.type === 'free' ? 'Legacy Lifetime Free' : 
+                           restaurant.subscription?.type === 'trial' ? '90-Day Free Trial' : 
+                           'Business Pro Plan'
+                        } />
                         <DetailItem label="Expiry Schedule" value={restaurant.subscription?.expiryDate ? new Date(restaurant.subscription.expiryDate).toLocaleDateString() : 'Continuous'} />
                         <DetailItem label="Verification" value={restaurant.isVerified ? 'Identity Verified' : 'Pending Verification'} />
                      </>
@@ -262,21 +267,31 @@ export default function RestaurantDetailsPage() {
                         {/* Subscription Type Toggle */}
                         <div className="flex items-center justify-between p-5 bg-slate-800/50 rounded-2xl border border-slate-700">
                            <div className="flex flex-col gap-1">
-                              <span className="text-white font-bold">Plan Type</span>
-                              <span className="text-xs text-slate-400">{subscriptionData.type === 'free' ? 'Lifetime Free Access' : 'Paid Business Pro'}</span>
+                              <span className="text-white font-bold">Plan Geometry</span>
+                              <span className="text-xs text-slate-400">
+                                 {subscriptionData.type === 'free' ? 'Lifetime Free Node' : 
+                                  subscriptionData.type === 'trial' ? 'Limited Trial Node' : 
+                                  'Paid Business Node'}
+                              </span>
                            </div>
                            <div className="flex bg-slate-900 p-1 rounded-xl border border-white/5">
                               <button
                                  onClick={() => setSubscriptionData(prev => ({ ...prev, type: 'free' }))}
-                                 className={`px-4 py-2 rounded-lg text-xs font-black transition-all ${subscriptionData.type === 'free' ? 'bg-amber-500 text-white' : 'text-slate-500 hover:text-white'}`}
+                                 className={`px-3 py-2 rounded-lg text-[10px] font-black transition-all ${subscriptionData.type === 'free' ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:text-white'}`}
                               >
                                  FREE
                               </button>
                               <button
-                                 onClick={() => setSubscriptionData(prev => ({ ...prev, type: 'paid' }))}
-                                 className={`px-4 py-2 rounded-lg text-xs font-black transition-all ${subscriptionData.type === 'paid' ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:text-white'}`}
+                                 onClick={() => setSubscriptionData(prev => ({ ...prev, type: 'trial' }))}
+                                 className={`px-3 py-2 rounded-lg text-[10px] font-black transition-all ${subscriptionData.type === 'trial' ? 'bg-amber-500 text-white' : 'text-slate-500 hover:text-white'}`}
                               >
-                                 PRO
+                                 TRIAL
+                              </button>
+                              <button
+                                 onClick={() => setSubscriptionData(prev => ({ ...prev, type: 'paid' }))}
+                                 className={`px-3 py-2 rounded-lg text-[10px] font-black transition-all ${subscriptionData.type === 'paid' ? 'bg-emerald-600 text-white' : 'text-slate-500 hover:text-white'}`}
+                              >
+                                 PAID
                               </button>
                            </div>
                         </div>
@@ -298,7 +313,7 @@ export default function RestaurantDetailsPage() {
                         </div>
 
                         {/* Expiry Date Picker */}
-                        <div className={`space-y-3 transition-opacity duration-300 ${subscriptionData.type === 'free' ? 'opacity-30 pointer-events-none' : 'opacity-100'}`}>
+                        <div className={`space-y-3 transition-opacity duration-300 ${(subscriptionData.type === 'free' || subscriptionData.type === 'trial') ? 'opacity-30 pointer-events-none' : 'opacity-100'}`}>
                            <label className="text-sm font-bold text-slate-300 ml-1 uppercase tracking-widest">Subscription Expiry Date</label>
                            <input
                               type="date"

@@ -39,7 +39,7 @@ export default function RestaurantMonitoring() {
 
   // Modal form state
   const [subscriptionData, setSubscriptionData] = useState({
-    type: 'free' as 'free' | 'paid',
+    type: 'free' as 'free' | 'paid' | 'trial',
     status: 'active' as 'active' | 'inactive' | 'expired',
     expiryDate: ''
   });
@@ -292,8 +292,14 @@ export default function RestaurantMonitoring() {
 
                       <td className="px-6 py-6">
                         <div className="flex flex-col gap-1">
-                          <span className={`text-[10px] font-black uppercase tracking-widest ${restaurant.subscription?.type === 'free' ? 'text-amber-400' : 'text-indigo-400'}`}>
-                            {restaurant.subscription?.type === 'free' ? 'Trial Access' : 'Business Pro'}
+                          <span className={`text-[10px] font-black uppercase tracking-widest ${
+                            restaurant.subscription?.type === 'free' ? 'text-indigo-400' : 
+                            restaurant.subscription?.type === 'trial' ? 'text-amber-400' : 
+                            'text-emerald-400'
+                          }`}>
+                            {restaurant.subscription?.type === 'free' ? 'Lifetime Access' : 
+                             restaurant.subscription?.type === 'trial' ? 'Free Trial' : 
+                             'Business Pro'}
                           </span>
                           <div className="text-[9px] text-slate-500 flex items-center gap-1 font-black">
                             <Clock size={10} />
@@ -322,7 +328,7 @@ export default function RestaurantMonitoring() {
 
                       <td className="px-8 py-6 text-right">
                         <div className="flex items-center justify-end gap-2 translate-x-4 opacity-0 group-hover:opacity-100 group-hover:translate-x-0 transition-all">
-                          <Link href={`/superadmin/dashboard/restaurants/${restaurant._id}`}>
+                          <Link href={`/superadmin/restaurants/${restaurant._id}`}>
                             <button className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-xl border border-white/5 transition-all" title="View Details">
                               <Eye size={16} />
                             </button>
@@ -397,22 +403,28 @@ export default function RestaurantMonitoring() {
                 <div className="flex items-center justify-between p-5 bg-slate-800/30 rounded-3xl border border-slate-800">
                   <div className="flex flex-col gap-1">
                     <span className="text-white font-bold">Plan Type</span>
-                    <span className="text-xs text-slate-500">{subscriptionData.type === 'free' ? 'Lifetime Free Access' : 'Paid Business Pro'}</span>
+                    <span className="text-xs text-slate-500">{(subscriptionData.type === 'free' || subscriptionData.type === 'trial') ? 'Lifetime Free Access' : 'Paid Business Pro'}</span>
                   </div>
-                  <div className="flex bg-slate-900 p-1 rounded-xl border border-white/5">
-                    <button
-                      onClick={() => setSubscriptionData(prev => ({ ...prev, type: 'free' }))}
-                      className={`px-4 py-2 rounded-lg text-xs font-black transition-all ${subscriptionData.type === 'free' ? 'bg-amber-500 text-white' : 'text-slate-500 hover:text-white'}`}
-                    >
-                      FREE
-                    </button>
-                    <button
-                      onClick={() => setSubscriptionData(prev => ({ ...prev, type: 'paid' }))}
-                      className={`px-4 py-2 rounded-lg text-xs font-black transition-all ${subscriptionData.type === 'paid' ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:text-white'}`}
-                    >
-                      PRO
-                    </button>
-                  </div>
+                    <div className="flex bg-slate-900 p-1 rounded-xl border border-white/5">
+                      <button
+                        onClick={() => setSubscriptionData(prev => ({ ...prev, type: 'free' }))}
+                        className={`px-3 py-2 rounded-lg text-[10px] font-black transition-all ${subscriptionData.type === 'free' ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:text-white'}`}
+                      >
+                        FREE
+                      </button>
+                      <button
+                        onClick={() => setSubscriptionData(prev => ({ ...prev, type: 'trial' }))}
+                        className={`px-3 py-2 rounded-lg text-[10px] font-black transition-all ${subscriptionData.type === 'trial' ? 'bg-amber-500 text-white' : 'text-slate-500 hover:text-white'}`}
+                      >
+                        TRIAL
+                      </button>
+                      <button
+                        onClick={() => setSubscriptionData(prev => ({ ...prev, type: 'paid' }))}
+                        className={`px-3 py-2 rounded-lg text-[10px] font-black transition-all ${subscriptionData.type === 'paid' ? 'bg-emerald-600 text-white' : 'text-slate-500 hover:text-white'}`}
+                      >
+                        PAID
+                      </button>
+                    </div>
                 </div>
 
                 {/* Subscription Status */}
@@ -432,7 +444,7 @@ export default function RestaurantMonitoring() {
                 </div>
 
                 {/* Expiry Date Picker */}
-                <div className={`space-y-3 transition-opacity duration-300 ${subscriptionData.type === 'free' ? 'opacity-30 pointer-events-none' : 'opacity-100'}`}>
+                <div className={`space-y-3 transition-opacity duration-300 ${(subscriptionData.type === 'free' || subscriptionData.type === 'trial') ? 'opacity-30 pointer-events-none' : 'opacity-100'}`}>
                   <label className="text-sm font-bold text-slate-300 ml-1 uppercase tracking-widest">Subscription Expiry Date</label>
                   <div className="relative">
                     <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 w-5 h-5" />

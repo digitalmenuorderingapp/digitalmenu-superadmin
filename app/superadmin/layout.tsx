@@ -57,6 +57,12 @@ function SuperadminLayoutContent({ children }: { children: React.ReactNode }) {
           href: '/superadmin/usage-analysis',
           icon: BarChart3,
           current: pathname === '/superadmin/usage-analysis' || pathname.startsWith('/superadmin/usage-analysis/')
+        },
+        {
+          name: 'Audit Logs',
+          href: '/superadmin/audit-logs',
+          icon: History,
+          current: pathname === '/superadmin/audit-logs' || pathname.startsWith('/superadmin/audit-logs/')
         }
       ]
     },

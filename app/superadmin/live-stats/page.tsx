@@ -47,42 +47,6 @@ interface LiveStats {
     bandwidthUsed: number;
     activeConnections: number;
   };
-  storage: {
-    cloudinary: {
-      used: number;
-      limit: number;
-      usedFormatted: string;
-      limitFormatted: string;
-      percentage: number;
-      bandwidth: {
-        used: number;
-        limit: number;
-        formatted: string;
-        limitFormatted: string;
-        percentage: number;
-      };
-      requests: number;
-      plan: string;
-    };
-    mongodb: {
-      status?: string;
-      dataSize: number;
-      storageSize: number;
-      indexSize: number;
-      totalSize: number;
-      dataSizeFormatted: string;
-      storageSizeFormatted: string;
-      indexSizeFormatted: string;
-      totalSizeFormatted: string;
-      limit: number;
-      limitFormatted: string;
-      percentage: number;
-      opsPerSecondLimit: number;
-      collections: number;
-      documents: number;
-      indexes: number;
-    };
-  };
 }
 
 export default function LiveStatsPage() {
@@ -93,23 +57,13 @@ export default function LiveStatsPage() {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const [serverRes, cloudinaryRes, mongoRes] = await Promise.all([
-          api.get('/server-monitoring/current-stats'),
-          api.get('/superadmin/cloudinary-stats'),
-          api.get('/superadmin/mongo-stats')
-        ]);
+        const response = await api.get('/superadmin/current-stats');
         
-        if (serverRes.data.success && cloudinaryRes.data.success && mongoRes.data.success) {
-          setStats({
-            ...serverRes.data.data,
-            storage: {
-              cloudinary: cloudinaryRes.data.cloudinary,
-              mongodb: mongoRes.data.mongodb
-            }
-          });
+        if (response.data.success) {
+          setStats(response.data.data);
           setError(null);
         } else {
-          setError('Failed to fetch some stats');
+          setError('Failed to fetch stats');
         }
       } catch (err: any) {
         console.error('Stats fetch error:', err);
@@ -128,43 +82,11 @@ export default function LiveStatsPage() {
 
     // Subscribe to server-specific statistics (CPU, RAM, API)
     superadminSocketService.on('serverStatsUpdate', (newStats: any) => {
-      setStats(prev => {
-        if (!prev) return prev;
-        return {
-          ...newStats,
-          storage: prev.storage
-        };
-      });
-    });
-
-    // Subscribe to peripheral service status (DB, Cloudinary, Connectivity)
-    superadminSocketService.on('serviceStatusUpdate', (statusUpdate: any) => {
-      setStats(prev => {
-        if (!prev || !statusUpdate) return prev;
-        return {
-          ...prev,
-          storage: {
-            cloudinary: {
-              ...prev.storage.cloudinary,
-              usedFormatted: statusUpdate.cloudinary?.storage?.used || prev.storage.cloudinary.usedFormatted,
-              bandwidth: {
-                ...prev.storage.cloudinary.bandwidth,
-                formatted: statusUpdate.cloudinary?.storage?.bandwidth || prev.storage.cloudinary.bandwidth.formatted
-              }
-            },
-            mongodb: {
-              ...prev.storage.mongodb,
-              status: statusUpdate.mongodb?.status || prev.storage.mongodb.status,
-              dataSizeFormatted: statusUpdate.mongodb?.stats?.dataSize || prev.storage.mongodb.dataSizeFormatted
-            }
-          }
-        };
-      });
+      setStats(newStats);
     });
 
     return () => {
       superadminSocketService.off('serverStatsUpdate');
-      superadminSocketService.off('serviceStatusUpdate');
     };
   }, []);
 
@@ -375,151 +297,6 @@ export default function LiveStatsPage() {
         </motion.div>
       </div>
 
-      {/* Storage Statistics */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Cloudinary Storage */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-slate-800/50 border border-slate-700 rounded-xl p-6"
-        >
-          <h3 className="text-lg font-semibold text-white mb-4 flex items-center">
-            <Cloud className="w-5 h-5 mr-2 text-blue-400" />
-            Cloudinary Storage
-          </h3>
-          <div className="space-y-4">
-            <div>
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-sm text-slate-400">Storage Used</span>
-                <span className="text-sm font-mono text-white">
-                  {stats.storage.cloudinary.usedFormatted} / {stats.storage.cloudinary.limitFormatted}
-                </span>
-              </div>
-              <div className="w-full bg-slate-700 rounded-full h-2">
-                <div 
-                  className={`h-2 rounded-full transition-all duration-500 ${
-                    stats.storage.cloudinary.percentage > 80 ? 'bg-red-500' :
-                    stats.storage.cloudinary.percentage > 60 ? 'bg-orange-500' :
-                    stats.storage.cloudinary.percentage > 40 ? 'bg-yellow-500' : 'bg-green-500'
-                  }`}
-                  style={{ width: `${Math.min(stats.storage.cloudinary.percentage, 100)}%` }}
-                />
-              </div>
-              <div className="text-xs text-slate-500 mt-1">
-                {stats.storage.cloudinary.percentage}% used (Free Plan: 25 GB max)
-              </div>
-            </div>
-            
-            <div>
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-sm text-slate-400">Bandwidth Used (Monthly)</span>
-                <span className="text-sm font-mono text-white">
-                  {stats.storage.cloudinary.bandwidth.formatted} / {stats.storage.cloudinary.bandwidth.limitFormatted}
-                </span>
-              </div>
-              <div className="w-full bg-slate-700 rounded-full h-2">
-                <div 
-                  className={`h-2 rounded-full transition-all duration-500 ${
-                    stats.storage.cloudinary.bandwidth.percentage > 80 ? 'bg-red-500' :
-                    stats.storage.cloudinary.bandwidth.percentage > 60 ? 'bg-orange-500' :
-                    stats.storage.cloudinary.bandwidth.percentage > 40 ? 'bg-yellow-500' : 'bg-green-500'
-                  }`}
-                  style={{ width: `${Math.min(stats.storage.cloudinary.bandwidth.percentage, 100)}%` }}
-                />
-              </div>
-              <div className="text-xs text-slate-500 mt-1">
-                {stats.storage.cloudinary.bandwidth.percentage}% used (Free Plan: 25 GB/month)
-              </div>
-            </div>
-            
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-slate-500">Transformations:</span>
-              <span className="text-white font-mono">{stats.storage.cloudinary.requests.toLocaleString()}</span>
-            </div>
-            
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-slate-500">Plan:</span>
-              <span className="text-blue-400 font-mono">{stats.storage.cloudinary.plan}</span>
-            </div>
-          </div>
-        </motion.div>
-
-        {/* MongoDB Storage */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="bg-slate-800/50 border border-slate-700 rounded-xl p-6"
-        >
-          <h3 className="text-lg font-semibold text-white mb-4 flex items-center">
-            <Database className="w-5 h-5 mr-2 text-green-400" />
-            MongoDB Atlas (Free Tier)
-          </h3>
-          <div className="space-y-4">
-            {/* Storage Usage Progress */}
-            <div>
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-sm text-slate-400">Storage Used</span>
-                <span className="text-sm font-mono text-white">
-                  {stats.storage.mongodb.totalSizeFormatted} / {stats.storage.mongodb.limitFormatted}
-                </span>
-              </div>
-              <div className="w-full bg-slate-700 rounded-full h-2">
-                <div 
-                  className={`h-2 rounded-full transition-all duration-500 ${
-                    stats.storage.mongodb.percentage > 80 ? 'bg-red-500' :
-                    stats.storage.mongodb.percentage > 60 ? 'bg-orange-500' :
-                    stats.storage.mongodb.percentage > 40 ? 'bg-yellow-500' : 'bg-green-500'
-                  }`}
-                  style={{ width: `${Math.min(stats.storage.mongodb.percentage, 100)}%` }}
-                />
-              </div>
-              <div className="text-xs text-slate-500 mt-1">
-                {stats.storage.mongodb.percentage}% used (Free Tier: 512 MB max)
-              </div>
-            </div>
-
-            {/* Operations Limit */}
-            <div className="flex justify-between items-center p-3 bg-slate-700/30 rounded-lg">
-              <div className="flex items-center space-x-2">
-                <Zap className="w-4 h-4 text-yellow-400" />
-                <span className="text-sm text-slate-400">Operations Limit</span>
-              </div>
-              <span className="text-sm font-mono text-white">
-                {stats.storage.mongodb.opsPerSecondLimit} ops/sec
-              </span>
-            </div>
-
-            {/* Storage Breakdown */}
-            <div className="space-y-2">
-              <div className="flex justify-between text-xs">
-                <span className="text-slate-500">Data Size:</span>
-                <span className="text-white font-mono">{stats.storage.mongodb.dataSizeFormatted}</span>
-              </div>
-              <div className="flex justify-between text-xs">
-                <span className="text-slate-500">Index Size:</span>
-                <span className="text-white font-mono">{stats.storage.mongodb.indexSizeFormatted}</span>
-              </div>
-            </div>
-            
-            {/* Stats Grid */}
-            <div className="grid grid-cols-3 gap-2">
-              <div className="text-center">
-                <div className="text-lg font-bold text-white">{stats.storage.mongodb.collections}</div>
-                <div className="text-xs text-slate-500">Collections</div>
-              </div>
-              <div className="text-center">
-                <div className="text-lg font-bold text-white">{stats.storage.mongodb.documents.toLocaleString()}</div>
-                <div className="text-xs text-slate-500">Documents</div>
-              </div>
-              <div className="text-center">
-                <div className="text-lg font-bold text-white">{stats.storage.mongodb.indexes}</div>
-                <div className="text-xs text-slate-500">Indexes</div>
-              </div>
-            </div>
-          </div>
-        </motion.div>
-      </div>
 
       {/* System Info */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

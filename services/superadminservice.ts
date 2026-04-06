@@ -115,7 +115,7 @@ export const superadminService: SuperadminService = {
    * Get system audit logs with filtering and pagination
    */
   getAuditLogs: async (params?: { type?: string, status?: string, search?: string, page?: number, limit?: number }) => {
-    const response = await api.get('/superadmin/logs', { params });
+    const response = await api.get('/server-monitoring/logs', { params });
     return response.data;
   }
 };

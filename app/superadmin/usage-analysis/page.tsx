@@ -44,7 +44,8 @@ import {
   ArrowDownRight,
   Search,
   Check,
-  X
+  X,
+  Cloud
 } from 'lucide-react';
 import api from '@/services/api';
 import { superadminService } from '@/services/superadminservice';
@@ -165,6 +166,43 @@ interface PeakUsage {
   };
 }
 
+interface StorageStats {
+  cloudinary: {
+    used: number;
+    limit: number;
+    usedFormatted: string;
+    limitFormatted: string;
+    percentage: number;
+    bandwidth: {
+      used: number;
+      limit: number;
+      formatted: string;
+      limitFormatted: string;
+      percentage: number;
+    };
+    requests: number;
+    plan: string;
+  };
+  mongodb: {
+    status?: string;
+    dataSize: number;
+    storageSize: number;
+    indexSize: number;
+    totalSize: number;
+    dataSizeFormatted: string;
+    storageSizeFormatted: string;
+    indexSizeFormatted: string;
+    totalSizeFormatted: string;
+    limit: number;
+    limitFormatted: string;
+    percentage: number;
+    opsPerSecondLimit: number;
+    collections: number;
+    documents: number;
+    indexes: number;
+  };
+}
+
 export default function UsageAnalysisPage() {
   const [usageData, setUsageData] = useState<DailyUsage[]>([]);
   const [peakData, setPeakData] = useState<PeakUsage[]>([]);
@@ -175,10 +213,8 @@ export default function UsageAnalysisPage() {
   const [dateRange, setDateRange] = useState('30'); // days
   const [selectedMetric, setSelectedMetric] = useState('requests');
   
-  // Audit Logs State
-  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
-  const [logsLoading, setLogsLoading] = useState(false);
-  const [logFilter, setLogFilter] = useState({ type: 'all', status: 'all', search: '' });
+  // Storage Stats State
+  const [storageStats, setStorageStats] = useState<StorageStats | null>(null);
   
   // Caching State (30s Stale Time)
   const [lastFetchTime, setLastFetchTime] = useState<number>(0);
@@ -205,7 +241,7 @@ export default function UsageAnalysisPage() {
         fetchPeakData(),
         fetchEndpointPerformance(),
         fetchHealthSummary(),
-        fetchAuditLogs()
+        fetchStorageStats()
       ]);
       setLastFetchTime(now);
     } catch (err) {
@@ -260,22 +296,21 @@ export default function UsageAnalysisPage() {
     }
   };
 
-  const fetchAuditLogs = async () => {
-    setLogsLoading(true);
+  const fetchStorageStats = async () => {
     try {
-      const data = await superadminService.getAuditLogs({
-        type: logFilter.type,
-        status: logFilter.status,
-        search: logFilter.search,
-        limit: 20
-      });
-      if (data.success) {
-        setAuditLogs(data.logs);
+      const [cloudinaryRes, mongoRes] = await Promise.all([
+        api.get('/server-monitoring/cloudinary-stats'),
+        api.get('/server-monitoring/mongo-stats')
+      ]);
+      
+      if (cloudinaryRes.data.success && mongoRes.data.success) {
+        setStorageStats({
+          cloudinary: cloudinaryRes.data.cloudinary,
+          mongodb: mongoRes.data.mongodb
+        });
       }
     } catch (err) {
-      console.error('Failed to fetch audit logs:', err);
-    } finally {
-      setLogsLoading(false);
+      console.error('Failed to fetch storage stats:', err);
     }
   };
 
@@ -321,8 +356,8 @@ export default function UsageAnalysisPage() {
         day.averageResponseTime,
         day.cpu.averageUsage,
         day.memory.averageUsage,
-        day.errors.errorRate.toFixed(2),
-        day.health.overall
+        day.errors?.errorRate?.toFixed(2) ?? '0.00',
+        day.health?.overall ?? 'unknown'
       ])
     ].map(row => row.join(',')).join('\n');
 
@@ -363,10 +398,10 @@ export default function UsageAnalysisPage() {
     ? usageData.reduce((sum, day) => sum + day.averageResponseTime, 0) / usageData.length 
     : 0;
   const avgCpuUsage = usageData.length > 0
-    ? usageData.reduce((sum, day) => sum + day.cpu.averageUsage, 0) / usageData.length
+    ? usageData.reduce((sum, day) => sum + (day.cpu?.averageUsage ?? 0), 0) / usageData.length
     : 0;
   const avgMemoryUsage = usageData.length > 0
-    ? usageData.reduce((sum, day) => sum + day.memory.averageUsage, 0) / usageData.length
+    ? usageData.reduce((sum, day) => sum + (day.memory?.averageUsage ?? 0), 0) / usageData.length
     : 0;
 
   return (
@@ -611,10 +646,10 @@ export default function UsageAnalysisPage() {
               <PieChart>
                 <Pie
                   data={[
-                    { name: 'Excellent', value: usageData.filter(d => d.health.overall === 'excellent').length, color: '#10B981' },
-                    { name: 'Good', value: usageData.filter(d => d.health.overall === 'good').length, color: '#3B82F6' },
-                    { name: 'Fair', value: usageData.filter(d => d.health.overall === 'fair').length, color: '#F59E0B' },
-                    { name: 'Poor', value: usageData.filter(d => d.health.overall === 'poor').length, color: '#EF4444' },
+                    { name: 'Excellent', value: usageData.filter(d => d.health?.overall === 'excellent').length, color: '#10B981' },
+                    { name: 'Good', value: usageData.filter(d => d.health?.overall === 'good').length, color: '#3B82F6' },
+                    { name: 'Fair', value: usageData.filter(d => d.health?.overall === 'fair').length, color: '#F59E0B' },
+                    { name: 'Poor', value: usageData.filter(d => d.health?.overall === 'poor').length, color: '#EF4444' },
                   ]}
                   cx="50%"
                   cy="50%"
@@ -641,6 +676,125 @@ export default function UsageAnalysisPage() {
           </div>
         </motion.div>
       </div>
+
+      {/* Storage Statistics */}
+      {storageStats && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Cloudinary Storage */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-slate-800/50 border border-slate-700 rounded-xl p-6"
+          >
+            <h3 className="text-lg font-semibold text-white mb-4 flex items-center">
+              <Cloud className="w-5 h-5 mr-2 text-blue-400" />
+              Cloudinary Storage
+            </h3>
+            <div className="space-y-4">
+              <div>
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-sm text-slate-400">Storage Used</span>
+                  <span className="text-sm font-mono text-white">
+                    {storageStats.cloudinary.usedFormatted} / {storageStats.cloudinary.limitFormatted}
+                  </span>
+                </div>
+                <div className="w-full bg-slate-700 rounded-full h-2">
+                  <div 
+                    className={`h-2 rounded-full transition-all duration-500 ${
+                      storageStats.cloudinary.percentage > 80 ? 'bg-red-500' :
+                      storageStats.cloudinary.percentage > 60 ? 'bg-orange-500' :
+                      storageStats.cloudinary.percentage > 40 ? 'bg-yellow-500' : 'bg-green-500'
+                    }`}
+                    style={{ width: `${Math.min(storageStats.cloudinary.percentage, 100)}%` }}
+                  />
+                </div>
+                <div className="text-xs text-slate-500 mt-1">
+                  {storageStats.cloudinary.percentage}% used (Free Plan: 25 GB max)
+                </div>
+              </div>
+              
+              <div>
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-sm text-slate-400">Bandwidth (Monthly)</span>
+                  <span className="text-sm font-mono text-white">
+                    {storageStats.cloudinary.bandwidth.formatted} / {storageStats.cloudinary.bandwidth.limitFormatted}
+                  </span>
+                </div>
+                <div className="w-full bg-slate-700 rounded-full h-2">
+                  <div 
+                    className={`h-2 rounded-full transition-all duration-500 ${
+                      storageStats.cloudinary.bandwidth.percentage > 80 ? 'bg-red-500' :
+                      storageStats.cloudinary.bandwidth.percentage > 60 ? 'bg-orange-500' :
+                      storageStats.cloudinary.bandwidth.percentage > 40 ? 'bg-yellow-500' : 'bg-green-500'
+                    }`}
+                    style={{ width: `${Math.min(storageStats.cloudinary.bandwidth.percentage, 100)}%` }}
+                  />
+                </div>
+                <div className="text-xs text-slate-500 mt-1">
+                  {storageStats.cloudinary.bandwidth.percentage}% used
+                </div>
+              </div>
+              
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-slate-500">Transformations:</span>
+                <span className="text-white font-mono">{storageStats.cloudinary.requests.toLocaleString()}</span>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* MongoDB Storage */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.1 }}
+            className="bg-slate-800/50 border border-slate-700 rounded-xl p-6"
+          >
+            <h3 className="text-lg font-semibold text-white mb-4 flex items-center">
+              <Database className="w-5 h-5 mr-2 text-green-400" />
+              MongoDB Atlas Stats
+            </h3>
+            <div className="space-y-4">
+              <div>
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-sm text-slate-400">Total Storage</span>
+                  <span className="text-sm font-mono text-white">
+                    {storageStats.mongodb.totalSizeFormatted} / {storageStats.mongodb.limitFormatted}
+                  </span>
+                </div>
+                <div className="w-full bg-slate-700 rounded-full h-2">
+                  <div 
+                    className={`h-2 rounded-full transition-all duration-500 ${
+                      storageStats.mongodb.percentage > 80 ? 'bg-red-500' :
+                      storageStats.mongodb.percentage > 60 ? 'bg-orange-500' :
+                      storageStats.mongodb.percentage > 40 ? 'bg-yellow-500' : 'bg-green-500'
+                    }`}
+                    style={{ width: `${Math.min(storageStats.mongodb.percentage, 100)}%` }}
+                  />
+                </div>
+                <div className="text-xs text-slate-500 mt-1">
+                  {storageStats.mongodb.percentage}% used
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="p-3 bg-slate-700/30 rounded-lg">
+                  <div className="text-xs text-slate-500 mb-1">Collections</div>
+                  <div className="text-lg font-bold text-white">{storageStats.mongodb.collections}</div>
+                </div>
+                <div className="p-3 bg-slate-700/30 rounded-lg">
+                  <div className="text-xs text-slate-500 mb-1">Documents</div>
+                  <div className="text-lg font-bold text-white">{storageStats.mongodb.documents.toLocaleString()}</div>
+                </div>
+              </div>
+
+              <div className="flex justify-between text-xs px-1">
+                <span className="text-slate-500">Avg Query Time:</span>
+                <span className="text-yellow-400 font-mono">{storageStats.mongodb.opsPerSecondLimit} ops/sec limit</span>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
 
       {/* Endpoint Performance */}
       {endpointPerformance.length > 0 && (
@@ -869,45 +1023,39 @@ export default function UsageAnalysisPage() {
                     <div className="flex items-center space-x-2">
                       <div className="w-12 bg-slate-700 rounded-full h-2">
                         <div 
-                          className={`h-2 rounded-full ${
-                            day.cpu.averageUsage > 80 ? 'bg-red-500' : 
-                            day.cpu.averageUsage > 60 ? 'bg-yellow-500' : 'bg-green-500'
-                          }`}
-                          style={{ width: `${day.cpu.averageUsage}%` }}
+                          className={`h-2 rounded-full ${(day.cpu?.averageUsage ?? 0) > 80 ? 'bg-red-500' : (day.cpu?.averageUsage ?? 0) > 60 ? 'bg-yellow-500' : 'bg-green-500'}`}
+                          style={{ width: `${day.cpu?.averageUsage ?? 0}%` }}
                         />
                       </div>
-                      <span className="text-blue-400 font-mono text-xs">{day.cpu.averageUsage}%</span>
+                      <span className="text-blue-400 font-mono text-xs">{day.cpu?.averageUsage ?? 0}%</span>
                     </div>
                   </td>
                   <td className="py-3">
                     <div className="flex items-center space-x-2">
                       <div className="w-12 bg-slate-700 rounded-full h-2">
                         <div 
-                          className={`h-2 rounded-full ${
-                            day.memory.averageUsage > 80 ? 'bg-red-500' : 
-                            day.memory.averageUsage > 60 ? 'bg-yellow-500' : 'bg-green-500'
-                          }`}
-                          style={{ width: `${day.memory.averageUsage}%` }}
+                          className={`h-2 rounded-full ${(day.memory?.averageUsage ?? 0) > 80 ? 'bg-red-500' : (day.memory?.averageUsage ?? 0) > 60 ? 'bg-yellow-500' : 'bg-green-500'}`}
+                          style={{ width: `${day.memory?.averageUsage ?? 0}%` }}
                         />
                       </div>
-                      <span className="text-purple-400 font-mono text-xs">{day.memory.averageUsage}%</span>
+                      <span className="text-purple-400 font-mono text-xs">{day.memory?.averageUsage ?? 0}%</span>
                     </div>
                   </td>
                   <td className="py-3">
                     <span className={`font-mono ${
-                      day.errors.errorRate > 5 ? 'text-red-400' :
-                      day.errors.errorRate > 2 ? 'text-yellow-400' : 'text-green-400'
+                      (day.errors?.errorRate ?? 0) > 5 ? 'text-red-400' :
+                      (day.errors?.errorRate ?? 0) > 2 ? 'text-yellow-400' : 'text-green-400'
                     }`}>
-                      {day.errors.errorRate.toFixed(2)}%
+                      {(day.errors?.errorRate ?? 0).toFixed(2)}%
                     </span>
                   </td>
                   <td className="py-3 text-slate-300 font-mono">
                     {formatBytes(day.network.totalBandwidth * 1024 * 1024)}
                   </td>
                   <td className="py-3">
-                    <div className={`flex items-center space-x-1 ${getHealthColor(day.health.overall)}`}>
-                      {getHealthIcon(day.health.overall)}
-                      <span className="text-sm capitalize">{day.health.overall}</span>
+                    <div className={`flex items-center space-x-1 ${getHealthColor(day.health?.overall ?? 'fair')}`}>
+                      {getHealthIcon(day.health?.overall ?? 'fair')}
+                      <span className="text-sm capitalize">{day.health?.overall ?? 'N/A'}</span>
                     </div>
                   </td>
                 </tr>
@@ -917,123 +1065,6 @@ export default function UsageAnalysisPage() {
         </div>
       </motion.div>
 
-      {/* Audit Logs Section */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="bg-slate-800/50 border border-slate-700 rounded-xl p-6"
-      >
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center space-x-2">
-            <Shield className="w-5 h-5 text-indigo-400" />
-            <h3 className="text-lg font-semibold text-white">System Audit Logs</h3>
-            {logsLoading && <RefreshCw className="w-4 h-4 text-slate-500 animate-spin ml-2" />}
-          </div>
-          <button 
-            onClick={() => fetchAuditLogs()}
-            className="text-indigo-400 hover:text-indigo-300 text-sm flex items-center space-x-1"
-          >
-            <RefreshCw className="w-3 h-3" />
-            <span>Refresh Logs</span>
-          </button>
-        </div>
-
-        {/* Filters */}
-        <div className="flex flex-wrap items-center gap-4 mb-6">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-            <input
-              type="text"
-              placeholder="Search logs..."
-              value={logFilter.search}
-              onChange={(e) => setLogFilter(prev => ({ ...prev, search: e.target.value }))}
-              onKeyDown={(e) => e.key === 'Enter' && fetchAuditLogs()}
-              className="bg-slate-900/50 border border-slate-700 text-white pl-10 pr-4 py-2 rounded-lg text-sm w-64 focus:border-indigo-500 outline-none transition-colors"
-            />
-          </div>
-          <select
-            value={logFilter.type}
-            onChange={(e) => setLogFilter(prev => ({ ...prev, type: e.target.value }))}
-            className="bg-slate-900/50 border border-slate-700 text-white px-3 py-2 rounded-lg text-sm focus:border-indigo-500 outline-none"
-          >
-            <option value="all">All Types</option>
-            <option value="auth">Auth Events</option>
-            <option value="user">User Management</option>
-            <option value="order">Order Activity</option>
-            <option value="system">System Events</option>
-            <option value="settings">Settings Changes</option>
-          </select>
-          <select
-            value={logFilter.status}
-            onChange={(e) => setLogFilter(prev => ({ ...prev, status: e.target.value }))}
-            className="bg-slate-900/50 border border-slate-700 text-white px-3 py-2 rounded-lg text-sm focus:border-indigo-500 outline-none"
-          >
-            <option value="all">All Status</option>
-            <option value="success">Success Only</option>
-            <option value="failed">Failed Only</option>
-          </select>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left text-slate-400 border-b border-slate-700">
-                <th className="pb-3 px-2">Time</th>
-                <th className="pb-3 px-2">Type</th>
-                <th className="pb-3 px-2">Action</th>
-                <th className="pb-3 px-2">User</th>
-                <th className="pb-3 px-2">IP Address</th>
-                <th className="pb-3 px-2">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {auditLogs.length > 0 ? (
-                auditLogs.map((log) => (
-                  <tr key={log._id} className="border-b border-slate-700/50 hover:bg-slate-700/20 transition-colors">
-                    <td className="py-4 px-2 text-slate-400 whitespace-nowrap">
-                      {new Date(log.createdAt).toLocaleString()}
-                    </td>
-                    <td className="py-4 px-2">
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
-                        log.type === 'auth' ? 'bg-blue-500/10 text-blue-400' :
-                        log.type === 'system' ? 'bg-purple-500/10 text-purple-400' :
-                        log.type === 'user' ? 'bg-green-500/10 text-green-400' :
-                        'bg-slate-500/10 text-slate-400'
-                      }`}>
-                        {log.type}
-                      </span>
-                    </td>
-                    <td className="py-4 px-2 text-white font-medium">{log.action}</td>
-                    <td className="py-4 px-2 text-slate-300">{log.user}</td>
-                    <td className="py-4 px-2 text-slate-500 font-mono text-xs">{log.ip}</td>
-                    <td className="py-4 px-2">
-                      <div className="flex items-center space-x-1">
-                        {log.status === 'success' ? (
-                          <>
-                            <Check className="w-4 h-4 text-green-500" />
-                            <span className="text-green-500 text-xs">Success</span>
-                          </>
-                        ) : (
-                          <>
-                            <X className="w-4 h-4 text-red-500" />
-                            <span className="text-red-500 text-xs">Failed</span>
-                          </>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={6} className="py-8 text-center text-slate-500">
-                    No activity logs found for the selected filters.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </motion.div>
     </div>
   );
 }
