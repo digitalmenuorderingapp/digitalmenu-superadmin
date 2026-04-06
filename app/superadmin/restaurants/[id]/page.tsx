@@ -136,6 +136,12 @@ export default function RestaurantDetailsPage() {
             </div>
 
             <div className="flex items-center gap-3">
+               <Link
+                  href={`/superadmin/restaurants/${id}/management`}
+                  className="px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500 hover:text-white border border-indigo-500/20"
+               >
+                  Management
+               </Link>
                <button
                   onClick={handleToggleStatus}
                   disabled={updating}

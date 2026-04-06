@@ -50,18 +50,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const checkAuth = async () => {
     try {
+      // First try to get current user (if already logged in)
       const response = await superadminService.me();
       if (response.success && response.user) {
         setSuperadmin(response.user);
         localStorage.setItem('isSuperadmin', 'true');
         localStorage.setItem('superadminUser', JSON.stringify(response.user));
+        setIsLoading(false);
+        return;
+      }
+    } catch (error) {
+      // Not authenticated, try auto-login
+      console.log('Not authenticated, attempting auto-login...');
+    }
+
+    // Try auto-login
+    try {
+      const autoLoginResponse = await superadminService.autoLogin();
+      if (autoLoginResponse.success && autoLoginResponse.user) {
+        setSuperadmin(autoLoginResponse.user);
+        localStorage.setItem('isSuperadmin', 'true');
+        localStorage.setItem('superadminUser', JSON.stringify(autoLoginResponse.user));
+        toast.success('Auto-login successful');
       } else {
         localStorage.removeItem('isSuperadmin');
         localStorage.removeItem('superadminUser');
         setSuperadmin(null);
       }
-    } catch (error) {
+    } catch (autoError) {
+      console.error('Auto-login failed:', autoError);
       localStorage.removeItem('isSuperadmin');
+      localStorage.removeItem('superadminUser');
       setSuperadmin(null);
     } finally {
       setIsLoading(false);
@@ -113,7 +132,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem('superadminUser');
       setSuperadmin(null);
       toast.success('Logged out successfully');
-      router.push('/superadmin/login');
+      router.push('/auth');
     }
   };
 

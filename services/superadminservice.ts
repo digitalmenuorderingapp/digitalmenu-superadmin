@@ -3,6 +3,7 @@ import api from './api';
 export interface SuperadminService {
   requestOTP: (email: string) => Promise<any>;
   verifyOTP: (email: string, otp: string) => Promise<any>;
+  autoLogin: () => Promise<any>;
   logout: () => Promise<any>;
   refresh: () => Promise<any>;
   getSystemStats: () => Promise<any>;
@@ -17,6 +18,7 @@ export interface SuperadminService {
   updateSubscription: (restaurantId: string, data: any) => Promise<any>;
   getAuditLogs: (params?: any) => Promise<any>;
   getCloudinaryStats: () => Promise<any>;
+  triggerMonthlyReports: (restaurantIds?: string[]) => Promise<any>;
 }
 
 export const superadminService: SuperadminService = {
@@ -35,6 +37,15 @@ export const superadminService: SuperadminService = {
     const response = await api.post('/superadmin/verify-otp', { email, otp });
     return response.data;
   },
+
+  /**
+   * Auto-login (bypass OTP for development)
+   */
+  autoLogin: async () => {
+    const response = await api.post('/superadmin/auto-login');
+    return response.data;
+  },
+
   /**
    * Superadmin logout
    */
@@ -154,6 +165,14 @@ export const superadminService: SuperadminService = {
    */
   getCloudinaryStats: async () => {
     const response = await api.get('/superadmin/cloudinary-stats');
+    return response.data;
+  },
+
+  /**
+   * Manually trigger monthly reports for all or selected restaurants (1st-5th only)
+   */
+  triggerMonthlyReports: async (restaurantIds?: string[]) => {
+    const response = await api.post('/superadmin/trigger-monthly-reports', { restaurantIds });
     return response.data;
   }
 };

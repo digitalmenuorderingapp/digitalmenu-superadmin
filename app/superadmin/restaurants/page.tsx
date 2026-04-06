@@ -43,6 +43,8 @@ export default function RestaurantMonitoring() {
     status: 'active' as 'active' | 'inactive' | 'expired',
     expiryDate: ''
   });
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [triggeringReports, setTriggeringReports] = useState(false);
 
   const fetchRestaurants = async () => {
     try {
@@ -105,6 +107,49 @@ export default function RestaurantMonitoring() {
     }
   };
 
+  const handleTriggerReports = async (isAll = false) => {
+    const day = new Date().getDate();
+    if (day > 5) {
+      toast.error('Reports can only be triggered between 1st-5th of the month.');
+      return;
+    }
+
+    const ids = isAll ? [] : selectedIds;
+    if (!isAll && ids.length === 0) {
+      toast.error('No restaurants selected');
+      return;
+    }
+
+    if (!confirm(`Are you sure you want to trigger monthly reports for ${isAll ? 'ALL' : ids.length} restaurants?`)) return;
+
+    try {
+      setTriggeringReports(true);
+      const res = await superadminService.triggerMonthlyReports(ids);
+      if (res.success) {
+        toast.success(res.message || 'Reports triggered successfully');
+        setSelectedIds([]);
+      } else {
+        toast.error(res.message || 'Failed to trigger reports');
+      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to trigger reports');
+    } finally {
+      setTriggeringReports(false);
+    }
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.length === filteredRestaurants.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(filteredRestaurants.map(r => r._id));
+    }
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+  };
+
   const filteredRestaurants = restaurants.filter(restaurant =>
     restaurant.restaurantName?.toLowerCase().includes(search.toLowerCase()) ||
     restaurant.email?.toLowerCase().includes(search.toLowerCase()) ||
@@ -120,23 +165,57 @@ export default function RestaurantMonitoring() {
           <h1 className="text-3xl font-bold text-white tracking-tight">Restaurant Database</h1>
           <p className="text-slate-400">Manage restaurant accounts, access status, and subscriptions</p>
         </div>
-
         <div className="flex items-center gap-3">
-          <div className="relative group flex-1 md:w-80">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-indigo-400 transition-colors w-4 h-4" />
-            <input
-              type="text"
-              placeholder="Search by restaurant or email..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full bg-slate-900/50 border border-slate-800 text-slate-200 rounded-2xl py-3 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all placeholder:text-slate-600 outline-none"
-            />
-          </div>
+          <button 
+            onClick={() => handleTriggerReports(true)}
+            disabled={triggeringReports}
+            className="p-3 bg-indigo-600/10 border border-indigo-500/20 text-indigo-400 rounded-2xl hover:bg-indigo-600/20 transition-all flex items-center gap-2 group"
+            title="Trigger Monthly Reports for All Restaurants"
+          >
+            <Mail size={20} className="group-hover:scale-110 transition-transform" />
+            <span className="text-xs font-bold uppercase tracking-widest hidden lg:inline">Trigger All</span>
+          </button>
           <button className="p-3 bg-slate-900/50 border border-slate-800 text-slate-400 rounded-2xl hover:text-white hover:border-slate-700 transition-all">
             <Filter size={20} />
           </button>
         </div>
       </div>
+
+      {/* Bulk Actions Bar */}
+      <AnimatePresence>
+        {selectedIds.length > 0 && (
+          <motion.div 
+            initial={{ y: 100, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 100, opacity: 0 }}
+            className="fixed bottom-10 left-1/2 -translate-x-1/2 z-50 bg-slate-900/90 backdrop-blur-xl border border-indigo-500/30 px-8 py-4 rounded-[2.5rem] shadow-2xl flex items-center gap-8 min-w-[400px]"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center text-xs font-black text-white">
+                {selectedIds.length}
+              </div>
+              <span className="text-sm font-bold text-white uppercase tracking-tight">Selected</span>
+            </div>
+            <div className="h-4 w-px bg-slate-800" />
+            <div className="flex items-center gap-4">
+               <button 
+                onClick={() => handleTriggerReports(false)}
+                disabled={triggeringReports}
+                className="px-6 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-black uppercase tracking-widest rounded-xl transition-all flex items-center gap-2 shadow-lg shadow-indigo-600/20"
+               >
+                 {triggeringReports ? <Loader2 size={14} className="animate-spin" /> : <Mail size={14} />}
+                 Send Reports
+               </button>
+               <button 
+                onClick={() => setSelectedIds([])}
+                className="px-6 py-2 bg-slate-800 hover:bg-slate-700 text-slate-400 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all"
+               >
+                 Cancel
+               </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {restaurants.length === 0 ? (
         <div className="bg-slate-900/30 border border-dashed border-slate-800 rounded-3xl p-16 text-center">
@@ -152,7 +231,15 @@ export default function RestaurantMonitoring() {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-slate-800/20 text-slate-500 text-[10px] uppercase tracking-[0.2em] font-black border-b border-white/5">
-                  <th className="px-8 py-5">Restaurant</th>
+                  <th className="px-8 py-5">
+                    <input 
+                      type="checkbox" 
+                      onChange={toggleSelectAll}
+                      checked={selectedIds.length > 0 && selectedIds.length === filteredRestaurants.length}
+                      className="w-4 h-4 bg-slate-900 border-slate-800 rounded focus:ring-indigo-500"
+                    />
+                  </th>
+                  <th className="px-4 py-5 text-left">Restaurant</th>
                   <th className="px-6 py-5">Owner</th>
                   <th className="px-6 py-5">Subscription</th>
                   <th className="px-6 py-5">Status</th>
@@ -173,6 +260,15 @@ export default function RestaurantMonitoring() {
                       className="group hover:bg-white/5 transition-colors"
                     >
                       <td className="px-8 py-6">
+                        <input 
+                          type="checkbox" 
+                          checked={selectedIds.includes(restaurant._id)}
+                          onChange={() => toggleSelect(restaurant._id)}
+                          onClick={(e) => e.stopPropagation()}
+                          className="w-4 h-4 bg-slate-900 border-white/10 rounded focus:ring-indigo-500 transition-all"
+                        />
+                      </td>
+                      <td className="px-4 py-6">
                         <div className="flex items-center gap-4">
                           <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 flex items-center justify-center border border-white/5 group-hover:border-indigo-500/50 transition-all shadow-xl overflow-hidden">
                             {restaurant.logo ? (
