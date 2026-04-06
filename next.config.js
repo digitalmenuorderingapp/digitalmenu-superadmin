@@ -10,7 +10,7 @@ const nextConfig = {
     ],
   },
   async rewrites() {
-    const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
+    const BACKEND_URL = (process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000').replace(/\/$/, '');
     return [
       {
         source: '/api/:path*',
