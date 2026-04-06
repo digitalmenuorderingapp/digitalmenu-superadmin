@@ -18,6 +18,8 @@ import {
   Database,
   Cloud
 } from 'lucide-react';
+import api from '@/services/api';
+import { superadminSocketService } from '@/services/superadmin-socket';
 
 interface LiveStats {
   timestamp: string;
@@ -63,6 +65,7 @@ interface LiveStats {
       plan: string;
     };
     mongodb: {
+      status?: string;
       dataSize: number;
       storageSize: number;
       indexSize: number;
@@ -90,32 +93,27 @@ export default function LiveStatsPage() {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        // Fetch server stats
-        const serverResponse = await fetch('/api/server-monitoring/current-stats');
-        const serverData = await serverResponse.json();
+        const [serverRes, cloudinaryRes, mongoRes] = await Promise.all([
+          api.get('/server-monitoring/current-stats'),
+          api.get('/superadmin/cloudinary-stats'),
+          api.get('/superadmin/mongo-stats')
+        ]);
         
-        // Fetch Cloudinary stats
-        const cloudinaryResponse = await fetch('/api/superadmin/cloudinary-stats');
-        const cloudinaryData = await cloudinaryResponse.json();
-        
-        // Fetch MongoDB stats
-        const mongoResponse = await fetch('/api/superadmin/mongo-stats');
-        const mongoData = await mongoResponse.json();
-        
-        if (serverData.success && cloudinaryData.success && mongoData.success) {
+        if (serverRes.data.success && cloudinaryRes.data.success && mongoRes.data.success) {
           setStats({
-            ...serverData.data,
+            ...serverRes.data.data,
             storage: {
-              cloudinary: cloudinaryData.cloudinary,
-              mongodb: mongoData.mongodb
+              cloudinary: cloudinaryRes.data.cloudinary,
+              mongodb: mongoRes.data.mongodb
             }
           });
           setError(null);
         } else {
           setError('Failed to fetch some stats');
         }
-      } catch (err) {
-        setError('Connection error');
+      } catch (err: any) {
+        console.error('Stats fetch error:', err);
+        setError(err.response?.data?.message || 'Connection error');
       } finally {
         setLoading(false);
       }
@@ -124,10 +122,50 @@ export default function LiveStatsPage() {
     // Initial fetch
     fetchStats();
 
-    // Update every 30 seconds for storage data (less frequent than server stats)
-    const interval = setInterval(fetchStats, 30000);
+    // Setup Sockets for real-time updates
+    superadminSocketService.connect();
+    superadminSocketService.join('superadmin');
 
-    return () => clearInterval(interval);
+    // Subscribe to server-specific statistics (CPU, RAM, API)
+    superadminSocketService.on('serverStatsUpdate', (newStats: any) => {
+      setStats(prev => {
+        if (!prev) return prev;
+        return {
+          ...newStats,
+          storage: prev.storage
+        };
+      });
+    });
+
+    // Subscribe to peripheral service status (DB, Cloudinary, Connectivity)
+    superadminSocketService.on('serviceStatusUpdate', (statusUpdate: any) => {
+      setStats(prev => {
+        if (!prev || !statusUpdate) return prev;
+        return {
+          ...prev,
+          storage: {
+            cloudinary: {
+              ...prev.storage.cloudinary,
+              usedFormatted: statusUpdate.cloudinary?.storage?.used || prev.storage.cloudinary.usedFormatted,
+              bandwidth: {
+                ...prev.storage.cloudinary.bandwidth,
+                formatted: statusUpdate.cloudinary?.storage?.bandwidth || prev.storage.cloudinary.bandwidth.formatted
+              }
+            },
+            mongodb: {
+              ...prev.storage.mongodb,
+              status: statusUpdate.mongodb?.status || prev.storage.mongodb.status,
+              dataSizeFormatted: statusUpdate.mongodb?.stats?.dataSize || prev.storage.mongodb.dataSizeFormatted
+            }
+          }
+        };
+      });
+    });
+
+    return () => {
+      superadminSocketService.off('serverStatsUpdate');
+      superadminSocketService.off('serviceStatusUpdate');
+    };
   }, []);
 
   const formatBytes = (bytes: number) => {

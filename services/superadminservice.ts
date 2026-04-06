@@ -6,19 +6,13 @@ export interface SuperadminService {
   autoLogin: () => Promise<any>;
   logout: () => Promise<any>;
   refresh: () => Promise<any>;
-  getSystemStats: () => Promise<any>;
-  getServiceStatus: () => Promise<any>;
-  getAnalytics: () => Promise<any>;
   getRestaurants: () => Promise<any>;
-  getUsers: () => Promise<any>;
-  getOrdersOverview: () => Promise<any>;
   getRestaurantDetail: (id: string) => Promise<any>;
   me: () => Promise<any>;
   updateRestaurantStatus: (restaurantId: string, status: 'active' | 'inactive') => Promise<any>;
   updateSubscription: (restaurantId: string, data: any) => Promise<any>;
-  getAuditLogs: (params?: any) => Promise<any>;
-  getCloudinaryStats: () => Promise<any>;
   triggerMonthlyReports: (restaurantIds?: string[]) => Promise<any>;
+  getAuditLogs: (params?: any) => Promise<any>;
 }
 
 export const superadminService: SuperadminService = {
@@ -63,53 +57,10 @@ export const superadminService: SuperadminService = {
   },
 
   /**
-   * Get Real-time System Metrics (CPU, Memory, Requests)
-   */
-  getSystemStats: async () => {
-    const response = await api.get('/superadmin/system-stats');
-    return response.data;
-  },
-
-  /**
-   * Check Status of External Services & Internal Systems
-   */
-  getServiceStatus: async () => {
-    const response = await api.get('/superadmin/service-status');
-    return response.data;
-  },
-
-  /**
-   * Get Dashboard Analytics & Trend Data
-   */
-  getAnalytics: async () => {
-    const response = await api.get('/superadmin/analytics');
-    return response.data;
-  },
-
-  /**
    * Get all registered restaurants with enriched data
    */
   getRestaurants: async () => {
     const response = await api.get('/superadmin/restaurants');
-    return response.data;
-  },
-
-  /**
-   * Get all users (Alias for getRestaurants to support Subscription page)
-   */
-  getUsers: async () => {
-    const response = await api.get('/superadmin/restaurants');
-    return {
-      success: response.data.success,
-      users: response.data.restaurants
-    };
-  },
-
-  /**
-   * Get Platform-wide Orders Overview (Aggregate stats)
-   */
-  getOrdersOverview: async () => {
-    const response = await api.get('/superadmin/orders-overview');
     return response.data;
   },
 
@@ -153,26 +104,18 @@ export const superadminService: SuperadminService = {
   },
 
   /**
-   * Get system audit logs
-   */
-  getAuditLogs: async (params?: { type?: string, status?: string, search?: string, page?: number, limit?: number }) => {
-    const response = await api.get('/superadmin/logs', { params });
-    return response.data;
-  },
-
-  /**
-   * Get Cloudinary usage stats
-   */
-  getCloudinaryStats: async () => {
-    const response = await api.get('/superadmin/cloudinary-stats');
-    return response.data;
-  },
-
-  /**
    * Manually trigger monthly reports for all or selected restaurants (1st-5th only)
    */
   triggerMonthlyReports: async (restaurantIds?: string[]) => {
     const response = await api.post('/superadmin/trigger-monthly-reports', { restaurantIds });
+    return response.data;
+  },
+
+  /**
+   * Get system audit logs with filtering and pagination
+   */
+  getAuditLogs: async (params?: { type?: string, status?: string, search?: string, page?: number, limit?: number }) => {
+    const response = await api.get('/superadmin/logs', { params });
     return response.data;
   }
 };

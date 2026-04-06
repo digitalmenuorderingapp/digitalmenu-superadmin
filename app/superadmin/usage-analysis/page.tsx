@@ -41,8 +41,24 @@ import {
   Layers,
   RefreshCw,
   ArrowUpRight,
-  ArrowDownRight
+  ArrowDownRight,
+  Search,
+  Check,
+  X
 } from 'lucide-react';
+import api from '@/services/api';
+import { superadminService } from '@/services/superadminservice';
+
+interface AuditLog {
+  _id: string;
+  type: 'auth' | 'user' | 'order' | 'system' | 'settings';
+  action: string;
+  user: string;
+  ip: string;
+  status: 'success' | 'failed';
+  details: any;
+  createdAt: string;
+}
 
 interface EndpointPerformance {
   _id: string;
@@ -158,45 +174,64 @@ export default function UsageAnalysisPage() {
   const [error, setError] = useState<string | null>(null);
   const [dateRange, setDateRange] = useState('30'); // days
   const [selectedMetric, setSelectedMetric] = useState('requests');
+  
+  // Audit Logs State
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+  const [logsLoading, setLogsLoading] = useState(false);
+  const [logFilter, setLogFilter] = useState({ type: 'all', status: 'all', search: '' });
+  
+  // Caching State (30s Stale Time)
+  const [lastFetchTime, setLastFetchTime] = useState<number>(0);
+  const STALE_TIME = 30000; // 30 seconds
 
   useEffect(() => {
-    fetchAllData();
+    const now = Date.now();
+    if (now - lastFetchTime > STALE_TIME) {
+      fetchAllData();
+    }
   }, [dateRange]);
 
-  const fetchAllData = async () => {
+  const fetchAllData = async (force = false) => {
+    const now = Date.now();
+    if (!force && lastFetchTime !== 0 && now - lastFetchTime < STALE_TIME) {
+      console.log('Using cached usage analysis metrics (stale < 30s)');
+      return;
+    }
+
     setLoading(true);
-    await Promise.all([
-      fetchUsageData(),
-      fetchPeakData(),
-      fetchEndpointPerformance(),
-      fetchHealthSummary()
-    ]);
-    setLoading(false);
+    try {
+      await Promise.all([
+        fetchUsageData(),
+        fetchPeakData(),
+        fetchEndpointPerformance(),
+        fetchHealthSummary(),
+        fetchAuditLogs()
+      ]);
+      setLastFetchTime(now);
+    } catch (err) {
+      console.error('Error fetching dashboard data:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const fetchUsageData = async () => {
     try {
-      const response = await fetch(`/api/server-monitoring/usage-analysis?days=${dateRange}`);
-      const data = await response.json();
-      
-      if (data.success) {
-        setUsageData(data.data);
+      const response = await api.get(`/server-monitoring/usage-analysis?days=${dateRange}`);
+      if (response.data.success) {
+        setUsageData(response.data.data);
         setError(null);
-      } else {
-        setError(data.message || 'Failed to fetch usage data');
       }
-    } catch (err) {
-      setError('Connection error');
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to fetch usage data');
     }
   };
 
   const fetchPeakData = async () => {
     try {
-      const response = await fetch(`/api/server-monitoring/peak-usage?days=${dateRange}`);
-      const data = await response.json();
-      
-      if (data.success) {
-        setPeakData(data.data);
+      const response = await api.get(`/server-monitoring/peak-usage?days=${dateRange}`);
+      if (response.data.success) {
+        setPeakData(response.data.data);
       }
     } catch (err) {
       console.error('Failed to fetch peak data:', err);
@@ -205,11 +240,9 @@ export default function UsageAnalysisPage() {
 
   const fetchEndpointPerformance = async () => {
     try {
-      const response = await fetch(`/api/server-monitoring/endpoint-performance?days=${dateRange}`);
-      const data = await response.json();
-      
-      if (data.success) {
-        setEndpointPerformance(data.data);
+      const response = await api.get(`/server-monitoring/endpoint-performance?days=${dateRange}`);
+      if (response.data.success) {
+        setEndpointPerformance(response.data.data);
       }
     } catch (err) {
       console.error('Failed to fetch endpoint performance:', err);
@@ -218,14 +251,31 @@ export default function UsageAnalysisPage() {
 
   const fetchHealthSummary = async () => {
     try {
-      const response = await fetch('/api/server-monitoring/health-summary');
-      const data = await response.json();
-      
-      if (data.success) {
-        setHealthSummary(data.data);
+      const response = await api.get('/server-monitoring/health-summary');
+      if (response.data.success) {
+        setHealthSummary(response.data.data);
       }
     } catch (err) {
       console.error('Failed to fetch health summary:', err);
+    }
+  };
+
+  const fetchAuditLogs = async () => {
+    setLogsLoading(true);
+    try {
+      const data = await superadminService.getAuditLogs({
+        type: logFilter.type,
+        status: logFilter.status,
+        search: logFilter.search,
+        limit: 20
+      });
+      if (data.success) {
+        setAuditLogs(data.logs);
+      }
+    } catch (err) {
+      console.error('Failed to fetch audit logs:', err);
+    } finally {
+      setLogsLoading(false);
     }
   };
 
@@ -862,6 +912,124 @@ export default function UsageAnalysisPage() {
                   </td>
                 </tr>
               ))}
+            </tbody>
+          </table>
+        </div>
+      </motion.div>
+
+      {/* Audit Logs Section */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-slate-800/50 border border-slate-700 rounded-xl p-6"
+      >
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center space-x-2">
+            <Shield className="w-5 h-5 text-indigo-400" />
+            <h3 className="text-lg font-semibold text-white">System Audit Logs</h3>
+            {logsLoading && <RefreshCw className="w-4 h-4 text-slate-500 animate-spin ml-2" />}
+          </div>
+          <button 
+            onClick={() => fetchAuditLogs()}
+            className="text-indigo-400 hover:text-indigo-300 text-sm flex items-center space-x-1"
+          >
+            <RefreshCw className="w-3 h-3" />
+            <span>Refresh Logs</span>
+          </button>
+        </div>
+
+        {/* Filters */}
+        <div className="flex flex-wrap items-center gap-4 mb-6">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+            <input
+              type="text"
+              placeholder="Search logs..."
+              value={logFilter.search}
+              onChange={(e) => setLogFilter(prev => ({ ...prev, search: e.target.value }))}
+              onKeyDown={(e) => e.key === 'Enter' && fetchAuditLogs()}
+              className="bg-slate-900/50 border border-slate-700 text-white pl-10 pr-4 py-2 rounded-lg text-sm w-64 focus:border-indigo-500 outline-none transition-colors"
+            />
+          </div>
+          <select
+            value={logFilter.type}
+            onChange={(e) => setLogFilter(prev => ({ ...prev, type: e.target.value }))}
+            className="bg-slate-900/50 border border-slate-700 text-white px-3 py-2 rounded-lg text-sm focus:border-indigo-500 outline-none"
+          >
+            <option value="all">All Types</option>
+            <option value="auth">Auth Events</option>
+            <option value="user">User Management</option>
+            <option value="order">Order Activity</option>
+            <option value="system">System Events</option>
+            <option value="settings">Settings Changes</option>
+          </select>
+          <select
+            value={logFilter.status}
+            onChange={(e) => setLogFilter(prev => ({ ...prev, status: e.target.value }))}
+            className="bg-slate-900/50 border border-slate-700 text-white px-3 py-2 rounded-lg text-sm focus:border-indigo-500 outline-none"
+          >
+            <option value="all">All Status</option>
+            <option value="success">Success Only</option>
+            <option value="failed">Failed Only</option>
+          </select>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-slate-400 border-b border-slate-700">
+                <th className="pb-3 px-2">Time</th>
+                <th className="pb-3 px-2">Type</th>
+                <th className="pb-3 px-2">Action</th>
+                <th className="pb-3 px-2">User</th>
+                <th className="pb-3 px-2">IP Address</th>
+                <th className="pb-3 px-2">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {auditLogs.length > 0 ? (
+                auditLogs.map((log) => (
+                  <tr key={log._id} className="border-b border-slate-700/50 hover:bg-slate-700/20 transition-colors">
+                    <td className="py-4 px-2 text-slate-400 whitespace-nowrap">
+                      {new Date(log.createdAt).toLocaleString()}
+                    </td>
+                    <td className="py-4 px-2">
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                        log.type === 'auth' ? 'bg-blue-500/10 text-blue-400' :
+                        log.type === 'system' ? 'bg-purple-500/10 text-purple-400' :
+                        log.type === 'user' ? 'bg-green-500/10 text-green-400' :
+                        'bg-slate-500/10 text-slate-400'
+                      }`}>
+                        {log.type}
+                      </span>
+                    </td>
+                    <td className="py-4 px-2 text-white font-medium">{log.action}</td>
+                    <td className="py-4 px-2 text-slate-300">{log.user}</td>
+                    <td className="py-4 px-2 text-slate-500 font-mono text-xs">{log.ip}</td>
+                    <td className="py-4 px-2">
+                      <div className="flex items-center space-x-1">
+                        {log.status === 'success' ? (
+                          <>
+                            <Check className="w-4 h-4 text-green-500" />
+                            <span className="text-green-500 text-xs">Success</span>
+                          </>
+                        ) : (
+                          <>
+                            <X className="w-4 h-4 text-red-500" />
+                            <span className="text-red-500 text-xs">Failed</span>
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={6} className="py-8 text-center text-slate-500">
+                    No activity logs found for the selected filters.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
