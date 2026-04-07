@@ -1,8 +1,7 @@
 import { io, Socket } from 'socket.io-client';
 
 const getSocketUrl = () => {
-    // Hardcoded production URL as requested to avoid environment variable issues on Vercel/Render
-    return 'https://digitalmenu-server.onrender.com';
+    return process.env.NEXT_PUBLIC_BACKEND_URL || 'https://digitalmenu-server.onrender.com';
 };
 
 const SOCKET_URL = getSocketUrl();
