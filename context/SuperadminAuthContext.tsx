@@ -23,6 +23,7 @@ interface SuperadminAuthContextType {
   requestOTP: (email: string) => Promise<void>;
   verifyOTP: (email: string, otp: string) => Promise<any>;
   verifyOtp: (email: string, otp: string) => Promise<any>; // Alias for compatibility
+  googleSignIn: (idToken: string, deviceId: string, deviceName: string) => Promise<any>;
   resendOtp: (email: string) => Promise<void>;
   login: (email: string, password?: string) => Promise<{ notVerified: boolean }>;
   register: (email: string, password?: string) => Promise<void>;
@@ -116,6 +117,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const googleSignIn = async (idToken: string, deviceId: string, deviceName: string) => {
+    try {
+      setIsLoading(true);
+      const response = await superadminService.googleSignIn(idToken, deviceId, deviceName);
+      if (response.success) {
+        const userData = response.user;
+        setSuperadmin(userData);
+        localStorage.setItem('isSuperadmin', 'true');
+        localStorage.setItem('superadminUser', JSON.stringify(userData));
+        toast.success('Google Sign-In successful');
+        return response;
+      }
+    } catch (error: any) {
+      const message = error.response?.data?.message || 'Google Sign-In failed';
+      toast.error(message);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const logout = async () => {
     try {
       await superadminService.logout();
@@ -167,6 +189,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         requestOTP,
         verifyOTP,
         verifyOtp: verifyOTP,
+        googleSignIn,
         resendOtp,
         login,
         register,

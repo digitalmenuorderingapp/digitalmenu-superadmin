@@ -9,6 +9,7 @@ export interface SuperadminService {
   getRestaurants: () => Promise<any>;
   getRestaurantDetail: (id: string) => Promise<any>;
   me: () => Promise<any>;
+  googleSignIn: (idToken: string, deviceId: string, deviceName: string) => Promise<any>;
   updateRestaurantStatus: (restaurantId: string, status: 'active' | 'inactive') => Promise<any>;
   updateSubscription: (restaurantId: string, data: any) => Promise<any>;
   triggerMonthlyReports: (restaurantIds?: string[]) => Promise<any>;
@@ -77,6 +78,14 @@ export const superadminService: SuperadminService = {
    */
   me: async () => {
     const response = await api.get('/superadmin/me');
+    return response.data;
+  },
+
+  /**
+   * Google Sign-In for superadmin
+   */
+  googleSignIn: async (idToken: string, deviceId: string, deviceName: string) => {
+    const response = await api.post('/superadmin/google-signin', { idToken, deviceId, deviceName });
     return response.data;
   },
 

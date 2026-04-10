@@ -47,6 +47,8 @@ export default function RootLayout({
             }}
           />
         </AuthProvider>
+        {/* Google Identity Services */}
+        <script src="https://accounts.google.com/gsi/client" async defer></script>
       </body>
     </html>
   );
